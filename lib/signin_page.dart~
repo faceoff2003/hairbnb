@@ -1,0 +1,278 @@
+import 'package:flutter/material.dart';
+
+class SigninPage extends StatefulWidget {
+  const SigninPage({super.key});
+
+  @override
+  State<SigninPage> createState() => _SigninPageState();
+}
+
+class _SigninPageState extends State<SigninPage> {
+  late Color myColor;
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+  bool isPasswordVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    myColor = Theme.of(context).primaryColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: myColor,
+        image: DecorationImage(
+          image: const AssetImage("assets/img/bg.png"),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            myColor.withOpacity(0.2),
+            BlendMode.dstATop,
+          ),
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Positioned(
+                    top: 80,
+                    child: _buildTop(constraints),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    child: _buildBottom(constraints),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTop(BoxConstraints constraints) {
+    return SizedBox(
+      width: constraints.maxWidth,
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on_sharp,
+            size: 100,
+            color: Colors.white,
+          ),
+          Text(
+            "Hairbnb",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 40,
+              letterSpacing: 2,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottom(BoxConstraints constraints) {
+    return SizedBox(
+      width: constraints.maxWidth,
+      height: constraints.maxHeight * 0.7, // Contrôle la taille du formulaire
+      child: Card(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: SingleChildScrollView(
+            child: _buildForm(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Bienvenue",
+          style: TextStyle(
+            color: myColor,
+            fontSize: 32,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        _buildGreyText("Veuillez vous inscrire avec vos informations"),
+        const SizedBox(height: 40),
+        _buildGreyText("Adresse e-mail"),
+        _buildInputField(
+          emailController,
+          hintText: "Entrez votre email",
+          validator: validateEmail,
+        ),
+        const SizedBox(height: 30),
+        _buildGreyText("Mot de passe"),
+        _buildInputField(
+          passwordController,
+          hintText: "Entrez votre mot de passe",
+          isPassword: true,
+          validator: validatePassword,
+        ),
+        const SizedBox(height: 30),
+        _buildGreyText("Confirmez le mot de passe"),
+        _buildInputField(
+          confirmPasswordController,
+          hintText: "Confirmez votre mot de passe",
+          isPassword: true,
+          validator: (_) => validatePasswords(),
+        ),
+        const SizedBox(height: 20),
+        _buildSigninButton(),
+        const SizedBox(height: 20),
+        _buildOtherSignin(),
+      ],
+    );
+  }
+
+  Widget _buildGreyText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(color: Colors.grey),
+    );
+  }
+
+  Widget _buildInputField(
+      TextEditingController controller, {
+        required String hintText,
+        required String? Function(String?) validator,
+        bool isPassword = false,
+      }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword && !isPasswordVisible,
+      keyboardType: isPassword ? TextInputType.visiblePassword : TextInputType.emailAddress, // Clavier spécifique
+      textInputAction: TextInputAction.next, // Passe au champ suivant
+      decoration: InputDecoration(
+        hintText: hintText,
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(
+            isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+          ),
+          onPressed: () {
+            setState(() {
+              isPasswordVisible = !isPasswordVisible;
+            });
+          },
+        )
+            : null,
+      ),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: validator,
+    );
+  }
+
+
+  String? validateEmail(String? email) {
+    if (email == null || email.isEmpty) return 'Veuillez entrer un email.';
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(email)) return 'Format d\'email invalide.';
+    return null;
+  }
+
+  String? validatePassword(String? password) {
+    if (password == null || password.isEmpty) {
+      return 'Veuillez entrer un mot de passe.';
+    }
+    if (password.length < 12) {
+      return 'Le mot de passe doit contenir au moins 12 caractères.';
+    }
+    final upperCaseRegex = RegExp(r'[A-Z]');
+    if (!upperCaseRegex.hasMatch(password)) {
+      return 'Le mot de passe doit contenir au moins une majuscule.';
+    }
+    final numberRegex = RegExp(r'[0-9]');
+    if (!numberRegex.hasMatch(password)) {
+      return 'Le mot de passe doit contenir au moins un chiffre.';
+    }
+    final specialCharRegex = RegExp(r'[!@#\$%\^&\*]');
+    if (!specialCharRegex.hasMatch(password)) {
+      return 'Le mot de passe doit contenir au moins un caractère spécial (!, @, #, \$, %, ^).';
+    }
+    return null;
+  }
+
+  String? validatePasswords() {
+    if (passwordController.text != confirmPasswordController.text) {
+      return 'Les mots de passe ne correspondent pas.';
+    }
+    return null;
+  }
+
+  Widget _buildSigninButton() {
+    return ElevatedButton(
+      onPressed: () {
+        if (_formIsValid()) {
+          debugPrint("Email : ${emailController.text}");
+          debugPrint("Mot de passe : ${passwordController.text}");
+        } else {
+          debugPrint("Formulaire invalide.");
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        shape: const StadiumBorder(),
+        elevation: 0, // Supprime l'ombre
+        backgroundColor: myColor, // Assure que la couleur reste définie
+        foregroundColor: Colors.white, // Définit la couleur du texte
+        side: BorderSide(color: myColor, width: 2), // Ajoute une bordure pour garder l'apparence
+        minimumSize: const Size.fromHeight(60),
+      ),
+      child: const Text("Inscription"),
+    );
+  }
+
+  bool _formIsValid() {
+    return validateEmail(emailController.text) == null &&
+        validatePassword(passwordController.text) == null &&
+        validatePasswords() == null;
+  }
+
+  Widget _buildOtherSignin() {
+    return Center(
+      child: Column(
+        children: [
+          _buildGreyText("Ou se connecter avec"),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildSocialIcon('assets/logo_login/facebook.png'),
+              _buildSocialIcon('assets/logo_login/google.png'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSocialIcon(String assetPath) {
+    return Image.asset(
+      assetPath,
+      width: 40,
+      height: 40,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(Icons.error, color: Colors.red);
+      },
+    );
+  }
+}
