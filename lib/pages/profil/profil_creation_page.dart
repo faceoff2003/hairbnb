@@ -296,7 +296,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       return;
     }
 
-    final url = Uri.parse("http://192.168.0.202:8000/api/create-profile/");
+    final url = Uri.parse("http://192.168.0.248:8000/api/create-profile/");
     var request = http.MultipartRequest('POST', url);
 
     // Ajouter les champs de formulaire

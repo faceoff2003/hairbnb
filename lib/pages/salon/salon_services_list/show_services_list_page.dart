@@ -32,7 +32,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.202:8000/api/coiffeuse_services/1/'),
+        Uri.parse('http://192.168.0.248:8000/api/coiffeuse_services/1/'),
       );
 
       if (response.statusCode == 200) {
@@ -409,9 +409,9 @@ class _EditServicePageState extends State<EditServicePage> {
 
     try {
       final url = widget.service['idTblService'] != null
-          ? 'http://192.168.0.202:8000/api/add_or_update_service/${widget
+          ? 'http://192.168.0.248:8000/api/add_or_update_service/${widget
           .service['idTblService']}/'
-          : 'http://192.168.0.202:8000/api/add_or_update_service/';
+          : 'http://192.168.0.248:8000/api/add_or_update_service/';
 
       final response = await http.put(
         Uri.parse(url),

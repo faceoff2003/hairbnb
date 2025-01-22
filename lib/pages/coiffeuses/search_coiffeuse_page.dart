@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../chat/chat_page.dart';
+
 
 
 class SearchCoiffeusePage extends StatefulWidget {
@@ -16,7 +18,7 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
   bool isLoading = false;
   bool hasError = false;
 
-  final String baseUrl = 'http://192.168.0.202:8000'; // Domaine de votre API
+  final String baseUrl = 'http://192.168.0.248:8000'; // Domaine de votre API
 
   @override
   void initState() {
@@ -141,7 +143,19 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
               isThreeLine: true,
               trailing: ElevatedButton(
                 onPressed: () {
+
+                  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                   print("Start chat with UUID: ${coiffeuse['uuid']}");
+                  //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatPage(
+                        clientId: "currentUserUuid",
+                        coiffeuseId: coiffeuse['uuid'], coiffeuseName: 'coiffeuseId',
+                      ),
+                    ),
+                  );
                 },
                 child: const Text("Contacter"),
               ),

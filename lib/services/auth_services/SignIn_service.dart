@@ -67,7 +67,7 @@ class AuthService {
 
   // Méthode pour vérifier si le profil existe dans la base PostgreSQL
   static Future<bool> _checkUserProfile(String userUuid) async {
-    final url = Uri.parse("http://192.168.0.202:8000/api/check-user-profile/");
+    final url = Uri.parse("http://192.168.0.248:8000/api/check-user-profile/");
     try {
       final response = await http.post(
         url,

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../pages/chat/messages_page.dart';
+import '../pages/coiffeuses/search_coiffeuse_page.dart';
+
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -74,7 +77,24 @@ class BottomNavBar extends StatelessWidget {
         if (index == 5) {
           // Si l'utilisateur appuie sur Déconnexion
           _confirmLogout(context); // Affiche une boîte de dialogue de confirmation
-        } else {
+        }
+        if(index == 1)
+        {
+          // Si l'utilisateur appuie sur "Rechercher"
+          Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SearchCoiffeusePage()),
+          );
+        }
+        if(index == 3)
+        {
+          // Si l'utilisateur appuie sur "Rechercher"
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MessagesPage(clientId: 'clientId',)),
+          );
+        }
+        else {
           onTap(index); // Appel de la méthode pour gérer la navigation
         }
       },

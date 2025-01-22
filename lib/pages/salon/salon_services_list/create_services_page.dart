@@ -29,7 +29,7 @@ class _CreateServicesPageState extends State<CreateServicesPage> {
 
   Future<void> _fetchServices() async {
     try {
-      final response = await http.get(Uri.parse('http://192.168.0.202:8000/api/services/'));
+      final response = await http.get(Uri.parse('http://192.168.0.248:8000/api/services/'));
 
       if (response.statusCode == 200) {
         final fetchedServices = json.decode(response.body);
@@ -146,74 +146,6 @@ class _CreateServicesPageState extends State<CreateServicesPage> {
       });
     }
   }
-
-
-  // Future<void> _saveService() async {
-  //   if (isAddingNewService) {
-  //     if (newServiceNameController.text.isEmpty || newServiceDescriptionController.text.isEmpty) {
-  //       _showError("Tous les champs pour le nouveau service sont obligatoires.");
-  //       return;
-  //     }
-  //   } else {
-  //     if (selectedService == null || durationController.text.isEmpty || priceController.text.isEmpty) {
-  //       _showError("Tous les champs sont obligatoires.");
-  //
-  //       return;
-  //     }
-  //   }
-  //
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-  //
-  //   try {
-  //     final requestBody = isAddingNewService
-  //         ? {
-  //       'id':selectedService,
-  //       'name': newServiceNameController.text,
-  //       'description': newServiceDescriptionController.text,
-  //       'minutes': durationController.text,
-  //       'price': priceController.text,
-  //     }
-  //         : {
-  //       'service_id': selectedService,
-  //       'minutes': durationController.text,
-  //       'price': priceController.text,
-  //     };
-  //
-  //     // Ajout du débogage
-  //     print("Request Body : $requestBody");
-  //     final response = await http.post(
-  //       Uri.parse('http://127.0.0.1:8000/api/add_or_update_service/'),
-  //       body: json.encode(requestBody),
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //     );
-  //
-  //     if (response.statusCode == 201) {
-  //       _showSuccess("Service ajouté ou mis à jour avec succès!");
-  //       setState(() {
-  //         newServiceNameController.clear();
-  //         newServiceDescriptionController.clear();
-  //         durationController.clear();
-  //         priceController.clear();
-  //         selectedService = null;
-  //         serviceDescription = null;
-  //         isAddingNewService = false;
-  //       });
-  //       await _fetchServices();
-  //     } else {
-  //       _showError("Erreur lors de l'ajout ou mise à jour : ${response.body}");
-  //     }
-  //   } catch (e) {
-  //     _showError("Erreur de connexion au serveur.");
-  //   } finally {
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
 
 
   void _showError(String message) {
@@ -334,6 +266,76 @@ class _CreateServicesPageState extends State<CreateServicesPage> {
 }
 
 
+
+
+
+
+// Future<void> _saveService() async {
+//   if (isAddingNewService) {
+//     if (newServiceNameController.text.isEmpty || newServiceDescriptionController.text.isEmpty) {
+//       _showError("Tous les champs pour le nouveau service sont obligatoires.");
+//       return;
+//     }
+//   } else {
+//     if (selectedService == null || durationController.text.isEmpty || priceController.text.isEmpty) {
+//       _showError("Tous les champs sont obligatoires.");
+//
+//       return;
+//     }
+//   }
+//
+//   setState(() {
+//     isLoading = true;
+//   });
+//
+//   try {
+//     final requestBody = isAddingNewService
+//         ? {
+//       'id':selectedService,
+//       'name': newServiceNameController.text,
+//       'description': newServiceDescriptionController.text,
+//       'minutes': durationController.text,
+//       'price': priceController.text,
+//     }
+//         : {
+//       'service_id': selectedService,
+//       'minutes': durationController.text,
+//       'price': priceController.text,
+//     };
+//
+//     // Ajout du débogage
+//     print("Request Body : $requestBody");
+//     final response = await http.post(
+//       Uri.parse('http://127.0.0.1:8000/api/add_or_update_service/'),
+//       body: json.encode(requestBody),
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     );
+//
+//     if (response.statusCode == 201) {
+//       _showSuccess("Service ajouté ou mis à jour avec succès!");
+//       setState(() {
+//         newServiceNameController.clear();
+//         newServiceDescriptionController.clear();
+//         durationController.clear();
+//         priceController.clear();
+//         selectedService = null;
+//         serviceDescription = null;
+//         isAddingNewService = false;
+//       });
+//       await _fetchServices();
+//     } else {
+//       _showError("Erreur lors de l'ajout ou mise à jour : ${response.body}");
+//     }
+//   } catch (e) {
+//     _showError("Erreur de connexion au serveur.");
+//   } finally {
+//     setState(() {
+//       isLoading = false;
+//     });
+//   }
+// }
 
 
 // import 'package:flutter/material.dart';

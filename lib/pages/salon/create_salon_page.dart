@@ -130,75 +130,6 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
     }
   }
 
-  // /// Méthode pour sauvegarder le salon
-  // Future<void> _saveSalon() async {
-  //   if (sloganController.text.isEmpty) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Le slogan est obligatoire.")),
-  //     );
-  //     return;
-  //   }
-  //
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-  //
-  //   final url = Uri.parse("http://127.0.0.1:8000/api/create_salon/");
-  //   final request = http.MultipartRequest('POST', url);
-  //
-  //   // Ajouter les champs de formulaire
-  //   request.fields['userUuid'] = "WSmkeiUCcKWaJBBrTSaV99puXw83";//widget.userUuid;
-  //   request.fields['slogan'] = sloganController.text;
-  //
-  //   // Ajouter le logo si présent
-  //   if (logoBytes != null && kIsWeb) {
-  //     request.files.add(
-  //       http.MultipartFile.fromBytes(
-  //         'logo_salon',
-  //         logoBytes!,
-  //         filename: 'salon_logo.png',
-  //         contentType: MediaType('image', 'png'),
-  //       ),
-  //     );
-  //   } else if (logoFile != null) {
-  //     request.files.add(
-  //       await http.MultipartFile.fromPath(
-  //         'logo_salon',
-  //         logoFile!.path,
-  //         contentType: MediaType('image', 'png'),
-  //       ),
-  //     );
-  //   }
-  //
-  //   try {
-  //     final response = await request.send();
-  //     final responseBody = await response.stream.bytesToString();
-  //
-  //     if (response.statusCode == 201) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(content: Text("Salon créé avec succès!")),
-  //       );
-  //       Navigator.push(
-  //         context,
-  //         MaterialPageRoute(builder: (_) => const CreateServicesPage()),
-  //       );
-  //     } else {
-  //       debugPrint("Erreur backend : $responseBody");
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text("Erreur lors de la création : $responseBody")),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     debugPrint("Erreur de connexion : $e");
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Erreur de connexion au serveur.")),
-  //     );
-  //   } finally {
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
 
   /// Méthode pour sauvegarder le salon
   Future<void> _saveSalon() async {
@@ -316,7 +247,75 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
 
 
 
-
+// /// Méthode pour sauvegarder le salon
+// Future<void> _saveSalon() async {
+//   if (sloganController.text.isEmpty) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Le slogan est obligatoire.")),
+//     );
+//     return;
+//   }
+//
+//   setState(() {
+//     isLoading = true;
+//   });
+//
+//   final url = Uri.parse("http://127.0.0.1:8000/api/create_salon/");
+//   final request = http.MultipartRequest('POST', url);
+//
+//   // Ajouter les champs de formulaire
+//   request.fields['userUuid'] = "WSmkeiUCcKWaJBBrTSaV99puXw83";//widget.userUuid;
+//   request.fields['slogan'] = sloganController.text;
+//
+//   // Ajouter le logo si présent
+//   if (logoBytes != null && kIsWeb) {
+//     request.files.add(
+//       http.MultipartFile.fromBytes(
+//         'logo_salon',
+//         logoBytes!,
+//         filename: 'salon_logo.png',
+//         contentType: MediaType('image', 'png'),
+//       ),
+//     );
+//   } else if (logoFile != null) {
+//     request.files.add(
+//       await http.MultipartFile.fromPath(
+//         'logo_salon',
+//         logoFile!.path,
+//         contentType: MediaType('image', 'png'),
+//       ),
+//     );
+//   }
+//
+//   try {
+//     final response = await request.send();
+//     final responseBody = await response.stream.bytesToString();
+//
+//     if (response.statusCode == 201) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Salon créé avec succès!")),
+//       );
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(builder: (_) => const CreateServicesPage()),
+//       );
+//     } else {
+//       debugPrint("Erreur backend : $responseBody");
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text("Erreur lors de la création : $responseBody")),
+//       );
+//     }
+//   } catch (e) {
+//     debugPrint("Erreur de connexion : $e");
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("Erreur de connexion au serveur.")),
+//     );
+//   } finally {
+//     setState(() {
+//       isLoading = false;
+//     });
+//   }
+// }
 
 
 
