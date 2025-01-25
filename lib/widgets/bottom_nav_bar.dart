@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../pages/chat/messages_page.dart';
 import '../pages/coiffeuses/search_coiffeuse_page.dart';
+import '../pages/profil/show_profile_page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -92,6 +93,14 @@ class BottomNavBar extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const MessagesPage(clientId: 'clientId',)),
+          );
+        }
+        if(index == 4)
+        {
+          // Si l'utilisateur appuie sur "Rechercher"
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const UserProfilePage(userUuid: 'userUuid',)),
           );
         }
         else {
