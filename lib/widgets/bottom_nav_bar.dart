@@ -4,6 +4,7 @@ import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
 import '../pages/coiffeuses/search_coiffeuse_page.dart';
 import '../pages/profil/show_profile_page.dart';
+import '../services/providers/get_user_type_service.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -38,10 +39,17 @@ class BottomNavBar extends StatelessWidget {
       // Profil
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
+
+        // Récupérer les détails de l'utilisateur depuis le backend
+        final userDetails = await getIdAndTypeFromUuid(currentUser.uid);
+        final usertype = userDetails?['type'];
+
+        print('the usertype is :' + usertype);
+
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProfileScreen(userUuid: currentUser.uid),
+            builder: (context) => ProfileScreen(userUuid: currentUser.uid,isCoiffeuse: usertype == 'coiffeuse'),
           ),
         );
       } else {

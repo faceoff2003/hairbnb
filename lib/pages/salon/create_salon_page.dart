@@ -151,7 +151,7 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
       isLoading = true;
     });
 
-    final url = Uri.parse("http://127.0.0.1:8000/api/create_salon/");
+    final url = Uri.parse("http://192.168.0.248:8000/api/create_salon/");
     final request = http.MultipartRequest('POST', url);
 
     // Ajouter les champs de formulaire

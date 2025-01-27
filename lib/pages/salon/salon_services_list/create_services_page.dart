@@ -108,8 +108,8 @@ class _CreateServicesPageState extends State<CreateServicesPage> {
 
       // Choisir la méthode HTTP et l'URL
       final url = isAddingNewService
-          ? Uri.parse('http://127.0.0.1:8000/api/add_or_update_service/')
-          : Uri.parse('http://127.0.0.1:8000/api/add_or_update_service/$selectedService/');
+          ? Uri.parse('http://192.168.0.248:8000/api/add_or_update_service/')
+          : Uri.parse('http://192.168.0.248:8000/api/add_or_update_service/$selectedService/');
 
       final response = isAddingNewService
           ? await http.post(
