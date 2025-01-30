@@ -1,19 +1,21 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../models/coiffeuse.dart';
+import '../../models/Services.dart';
 
-class ApiService {
+class ServiceAPI {
   static const String baseUrl = "http://192.168.0.248:8000/api";
 
-  Future<Coiffeuse?> fetchCoiffeuseByUuid(String uuid) async {
-    final response = await http.get(Uri.parse("$baseUrl/get_coiffeuse_by_uuid/$uuid/"));
-
+  // Récupérer les services d'une coiffeuse
+  static Future<List<Service>> fetchServices(String coiffeuseId) async {
+    final response = await http.get(Uri.parse("$baseUrl/get_services/$coiffeuseId/"));
     if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
-      return Coiffeuse.fromJson(jsonData["data"]);
+      final List data = json.decode(response.body)["salon"]["services"];
+      return data.map((e) => Service.fromJson(e)).toList();
     } else {
-      return null;
+      throw Exception("Erreur lors du chargement des services");
     }
   }
+
+
 }

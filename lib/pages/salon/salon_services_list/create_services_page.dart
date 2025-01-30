@@ -20,10 +20,10 @@ class _ServicesListPageState extends State<ServicesListPage> {
   @override
   void initState() {
     super.initState();
-    _fetchServices();
+    fetchServices();
   }
 
-  Future<void> _fetchServices() async {
+  Future<void> fetchServices() async {
     setState(() {
       isLoading = true;
       hasError = false;
@@ -57,7 +57,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
   }
 
   Future<void> _refreshData() async {
-    await _fetchServices();
+    await fetchServices();
   }
 
   void _showError(String message) {
@@ -88,7 +88,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
             ),
             const SizedBox(height: 10),
             ElevatedButton(
-              onPressed: _fetchServices,
+              onPressed: fetchServices,
               child: const Text("Réessayer"),
             ),
           ],
@@ -145,7 +145,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
           );
 
           if (result == true) {
-            _fetchServices();
+            fetchServices();
           }
         },
         child: const Icon(Icons.add),

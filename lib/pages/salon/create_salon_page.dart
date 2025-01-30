@@ -7,7 +7,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/add_service_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-
 import '../../services/providers/get_user_type_service.dart';
 
 class CreateSalonPage extends StatefulWidget {
@@ -198,7 +197,8 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
           );
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddServicePage(coiffeuseId: '',)),
+            MaterialPageRoute(builder: (_) => const AddServicePage(coiffeuseId: ''),
+          )
           );
         } else {
           debugPrint("Erreur backend : $responseBody");
