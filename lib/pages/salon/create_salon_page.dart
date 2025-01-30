@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/add_service_page.dart';
-import 'package:hairbnb/pages/salon/salon_services_list/create_services_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
