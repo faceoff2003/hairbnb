@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:hairbnb/pages/salon/salon_services_list/add_service_page.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/create_services_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+
+import '../../services/providers/get_user_type_service.dart';
 
 class CreateSalonPage extends StatefulWidget {
   final String userUuid;
@@ -182,19 +186,27 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Salon créé avec succès!")),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreateServicesPage()),
-        );
-      } else {
-        debugPrint("Erreur backend : $responseBody");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erreur lors de la création : $responseBody")),
-        );
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+
+        // Récupérer les détails de l'utilisateur depuis le backend
+        final userDetails = await getIdAndTypeFromUuid(currentUser.uid);
+        final usertype = userDetails?['type'];
+
+        if (response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Salon créé avec succès!")),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddServicePage(coiffeuseId: '',)),
+          );
+        } else {
+          debugPrint("Erreur backend : $responseBody");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Erreur lors de la création : $responseBody")),
+          );
+        }
       }
     } catch (e) {
       debugPrint("Erreur de connexion : $e");
@@ -211,10 +223,10 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
 
   /// Méthode pour ignorer la création du salon
   void _skipCreation() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateServicesPage()),
-    );
+    //Navigator.push(
+      //context,
+      //MaterialPageRoute(builder: (_) => const CreateServicesPage()),
+    //);
   }
 
   /// Fonction générique pour TextField

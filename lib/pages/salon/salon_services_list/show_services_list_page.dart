@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:hairbnb/services/messages/messages_page.dart';
-
+import '../../../services/messages/messages_page.dart';
+import 'add_service_page.dart'; // Nouvelle page pour ajouter un service
 
 class ServicesListPage extends StatefulWidget {
   final String coiffeuseId;
@@ -31,6 +31,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
     });
 
     try {
+      print('je suis la  ' + widget.coiffeuseId);
       final response = await http.get(
         Uri.parse('http://192.168.0.248:8000/api/coiffeuse_services/${widget.coiffeuseId}/'),
       );
@@ -43,13 +44,13 @@ class _ServicesListPageState extends State<ServicesListPage> {
         setState(() {
           hasError = true;
         });
-        showError("Erreur lors du chargement des services : ${response.body}", context);
+        _showError("Erreur lors du chargement des services : ${response.body}");
       }
     } catch (e) {
       setState(() {
         hasError = true;
       });
-      showError("Erreur de connexion au serveur.", context);
+      _showError("Erreur de connexion au serveur.");
     } finally {
       setState(() {
         isLoading = false;
@@ -61,10 +62,17 @@ class _ServicesListPageState extends State<ServicesListPage> {
     await _fetchServices();
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Liste des services"),
@@ -112,8 +120,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
                   children: [
                     Text(
                       service['intitule_service'] ?? "Nom indisponible",
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -123,27 +130,6 @@ class _ServicesListPageState extends State<ServicesListPage> {
                         Text("Temps : ${service['temps_minutes']?.toString() ?? 'Non défini'} min"),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.edit),
-                        label: const Text("Modifier"),
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditServicePage(
-                                service: service,
-                              ),
-                            ),
-                          );
-                          if (result == true) {
-                            _fetchServices();
-                          }
-                        },
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -151,9 +137,25 @@ class _ServicesListPageState extends State<ServicesListPage> {
           },
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddServicePage(coiffeuseId: widget.coiffeuseId),
+            ),
+          );
+
+          if (result == true) {
+            _fetchServices();
+          }
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
+
 
 // class ServicesListPage extends StatefulWidget {
 //   final String coiffeuseId;
@@ -399,7 +401,7 @@ class _EditServicePageState extends State<EditServicePage> {
         descriptionController.text.isEmpty ||
         priceController.text.isEmpty ||
         durationController.text.isEmpty) {
-      showError("Tous les champs sont obligatoires.",context);
+      showError("Tous les champs sont obligatoires je ss dans show services pages.",context);
       return;
     }
 
