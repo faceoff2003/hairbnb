@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../services/providers/api_location_service.dart';
 import '../../services/providers/location_service.dart';
+import '../salon/salon_services_list/salon_coiffeuse_page.dart';
 
-class CoiffeusesMapPage extends StatefulWidget {
+class CoiffeusesListPage extends StatefulWidget {
   @override
-  _CoiffeusesMapPageState createState() => _CoiffeusesMapPageState();
+  _CoiffeusesListPageState createState() => _CoiffeusesListPageState();
 }
 
-class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
+class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
   List<dynamic> coiffeuses = [];
   Position? _currentPosition;
   double _searchRadius = 10.0; // Distance par défaut en km
@@ -22,6 +21,7 @@ class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
     _loadUserLocation();
   }
 
+  /// 🔍 Récupérer la position de l'utilisateur
   Future<void> _loadUserLocation() async {
     try {
       Position? position = await LocationService.getUserLocation();
@@ -30,12 +30,16 @@ class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
           _currentPosition = position;
         });
         _fetchCoiffeuses();
+
+        print("Position actuelle : Latitude = ${_currentPosition?.latitude}, Longitude = ${_currentPosition?.longitude}");
+
       }
     } catch (e) {
       print("Erreur lors de la récupération de la position : $e");
     }
   }
 
+  /// 📡 Charger la liste des coiffeuses à proximité
   Future<void> _fetchCoiffeuses() async {
     if (_currentPosition == null) return;
 
@@ -46,6 +50,9 @@ class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
         _searchRadius,
       );
 
+      print("Position actuelle : Latitude = ${_currentPosition?.latitude}, Longitude = ${_currentPosition?.longitude}");
+
+
       setState(() {
         coiffeuses = nearbyCoiffeuses;
       });
@@ -54,20 +61,48 @@ class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
     }
   }
 
+  /// 🏁 Calculer la distance entre l'utilisateur et une coiffeuse
+  double _calculateDistance(String position) {
+    try {
+      List<String> pos = position.split(',');
+      double lat = double.parse(pos[0]);
+      double lon = double.parse(pos[1]);
+
+      return Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        lat,
+        lon,
+      ) /
+          1000; // Convertir en km
+    } catch (e) {
+      print("Erreur de calcul de distance : $e");
+      return 0.0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Coiffeuses à proximité")),
+      appBar: AppBar(
+        title: const Text("Coiffeuses à proximité"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchCoiffeuses, // 🔄 Rafraîchir la liste
+          ),
+        ],
+      ),
       body: _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // Barre de recherche par distance
+          // 🎛️ Barre de filtre de distance
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: Column(
               children: [
-                const Text("Rayon de recherche :"),
+                const Text("Filtrer par distance (km) :"),
                 Slider(
                   value: _searchRadius,
                   min: 1,
@@ -84,54 +119,55 @@ class _CoiffeusesMapPageState extends State<CoiffeusesMapPage> {
               ],
             ),
           ),
-          // Affichage de la carte
+
+          // 📋 Liste des coiffeuses
           Expanded(
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: _currentPosition == null
-                    ? LatLng(0, 0)
-                    : LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                initialZoom: 13,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: ['a', 'b', 'c'],
-                ),
-                MarkerLayer(
-                  markers: [
-                    // 🔵 Marqueur du client
-                    Marker(
-                      point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.person_pin, color: Colors.blue, size: 40),
+            child: coiffeuses.isEmpty
+                ? const Center(child: Text("Aucune coiffeuse trouvée."))
+                : ListView.builder(
+              itemCount: coiffeuses.length,
+              itemBuilder: (context, index) {
+                final coiffeuse = coiffeuses[index];
+
+                // 🔢 Calculer la distance
+                double distance = _calculateDistance(coiffeuse['position']);
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: NetworkImage(
+                        coiffeuse['user']['photo_profil'] ??
+                            'https://via.placeholder.com/150',
+                      ),
                     ),
-                    // 🔴 Marqueurs des coiffeuses
-                    ...coiffeuses.map((coiffeuse) {
-                      try {
-                        if (coiffeuse['position'] == null || !coiffeuse['position'].contains(',')) {
-                          return null; // Évite les erreurs si la position est mal formatée
-                        }
-
-                        List<String> pos = coiffeuse['position'].split(',');
-                        double lat = double.parse(pos[0]);
-                        double lon = double.parse(pos[1]);
-
-                        return Marker(
-                          point: LatLng(lat, lon),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                    title: Text(
+                      "${coiffeuse['user']['nom']} ${coiffeuse['user']['prenom']}",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text("Distance : ${distance.toStringAsFixed(1)} km"),
+                    trailing: ElevatedButton(
+                      onPressed: () {
+                        // 🚀 Aller vers le profil de la coiffeuse
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SalonCoiffeusePage(coiffeuse: coiffeuse),
+                          ),
                         );
-                      } catch (e) {
-                        print("Erreur de parsing de position : $e");
-                        return null; // Ignore les données corrompues
-                      }
-                    }).whereType<Marker>().toList(),
-                  ],
-                ),
-              ],
+
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                      ),
+                      child: const Text("Voir Profil"),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],

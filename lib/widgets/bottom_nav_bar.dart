@@ -25,7 +25,7 @@ class BottomNavBar extends StatelessWidget {
       // Rechercher
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => CoiffeusesMapPage()),
+        MaterialPageRoute(builder: (context) => CoiffeusesListPage()),
       );
     } else if (index == 3) {
       // Messages
