@@ -41,7 +41,8 @@ class _ServicesListPageState extends State<ServicesListPage> {
       );
 
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final responseData = json.decode(decodedBody);
         if (responseData['status'] == 'success') {
           setState(() {
             services = (responseData['salon']['services'] as List)
