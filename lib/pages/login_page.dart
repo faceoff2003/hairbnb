@@ -1,9 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/signin_page.dart';
 import 'package:hairbnb/services/auth_services/auth_service.dart';
-
-import 'home_page.dart';
 
 
 class LoginPage extends StatefulWidget {

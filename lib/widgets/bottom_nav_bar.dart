@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hairbnb/pages/coiffeuses/coiffeuses_map_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
-import '../pages/coiffeuses/search_coiffeuse_page.dart';
 import '../pages/profil/show_profile_page.dart';
 import '../services/providers/get_user_type_service.dart';
 
@@ -25,7 +25,7 @@ class BottomNavBar extends StatelessWidget {
       // Rechercher
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const SearchCoiffeusePage()),
+        MaterialPageRoute(builder: (context) => CoiffeusesMapPage()),
       );
     } else if (index == 3) {
       // Messages

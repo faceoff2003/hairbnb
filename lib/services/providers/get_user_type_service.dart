@@ -2,7 +2,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 Future<Map<String, dynamic>?> getIdAndTypeFromUuid(String uuid) async {
   final url = Uri.parse('http://192.168.0.248:8000/api/get_id_and_type_from_uuid/$uuid/');

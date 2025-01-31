@@ -1,17 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hairbnb/pages/chat/chat_page.dart';
-import 'package:hairbnb/pages/chat/messages_page.dart';
-import 'package:hairbnb/pages/coiffeuses/search_coiffeuse_page.dart';
-import 'package:hairbnb/pages/home_page.dart';
-import 'package:hairbnb/pages/login_page.dart';
-import 'package:hairbnb/pages/profil/profil_creation_page.dart';
-import 'package:hairbnb/pages/salon/create_salon_page.dart';
-import 'package:hairbnb/pages/salon/salon_services_list/create_services_page.dart';
-import 'package:hairbnb/pages/salon/salon_services_list/show_services_list_page.dart';
-import 'package:hairbnb/pages/signin_page.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:hairbnb/pages/test_api.dart';
 import 'firebase_options.dart';
 import 'package:hairbnb/pages/splash_screen.dart';
 
