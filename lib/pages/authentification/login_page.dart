@@ -1,6 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:hairbnb/pages/signin_page.dart';
+import 'package:hairbnb/pages/authentification/authentification_services/login_with_google.dart';
+import 'package:hairbnb/pages/authentification/signup_page.dart';
 import 'package:hairbnb/services/auth_services/auth_service.dart';
+
+import 'authentification_services/login_with_facebook.dart';
+import 'authentification_services/login_with_google.dart';
+import 'authentification_services/sign_up_with_google.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -11,16 +17,22 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   late Color myColor;
   late Size mediaSize;
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   bool rememberUser = false;
+  bool isPasswordVisible = false;
 
   @override
   Widget build(BuildContext context) {
-    myColor = Theme.of(context).primaryColor;
-    mediaSize = MediaQuery.of(context).size;
+    myColor = Theme
+        .of(context)
+        .primaryColor;
+    mediaSize = MediaQuery
+        .of(context)
+        .size;
 
     return Container(
       decoration: BoxDecoration(
@@ -33,10 +45,12 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
       child: Scaffold(
-        resizeToAvoidBottomInset: true, // Permet au contenu de se redimensionner avec le clavier
+        resizeToAvoidBottomInset: true,
+        // Permet au contenu de se redimensionner avec le clavier
         backgroundColor: Colors.transparent,
         body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(), // Ferme le clavier en appuyant à l'extérieur
+          onTap: () => FocusScope.of(context).unfocus(),
+          // Ferme le clavier en appuyant à l'extérieur
           child: SingleChildScrollView(
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -114,7 +128,8 @@ class _LoginPageState extends State<LoginPage> {
         _buildGreyText("Veuillez vous connecter avec vos informations"),
         const SizedBox(height: 60),
         _buildGreyText("Adresse e-mail"),
-        _buildInputField(emailController),
+        _buildInputField(emailController, isEmail: true),
+        //_buildInputField(emailController),
         const SizedBox(height: 40),
         _buildGreyText("Mot de passe"),
         _buildInputField(passwordController, isPassword: true),
@@ -135,18 +150,29 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildInputField(TextEditingController controller,
-      {isPassword = false}) {
+  Widget _buildInputField(TextEditingController controller, {bool isPassword = false, bool isEmail = false}) {
     return TextField(
       controller: controller,
+      obscureText: isPassword ? !isPasswordVisible : false, // Gérer la visibilité du mot de passe
+      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text, // ✅ Afficher @ et .com sur le clavier pour email
+      textInputAction: TextInputAction.next, // ✅ Permet de passer au champ suivant
       decoration: InputDecoration(
         suffixIcon: isPassword
-            ? const Icon(Icons.remove_red_eye)
+            ? IconButton(
+          icon: Icon(
+            isPasswordVisible ? Icons.visibility : Icons.visibility_off, // ✅ Changer l'icône
+          ),
+          onPressed: () {
+            setState(() {
+              isPasswordVisible = !isPasswordVisible; // ✅ Inverser l'état
+            });
+          },
+        )
             : const Icon(Icons.done),
       ),
-      obscureText: isPassword,
     );
   }
+
 
   Widget _buildRememberForgot() {
     return Column(
@@ -169,7 +195,8 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
             TextButton(
-              onPressed: () {}, // Ajouter une fonction pour le mot de passe oublié
+              onPressed: () {},
+              // Ajouter une fonction pour le mot de passe oublié
               child: _buildGreyText("MP oublié"),
             )
           ],
@@ -198,7 +225,8 @@ class _LoginPageState extends State<LoginPage> {
         AuthService().loginUserWithEmailandPassword(
             emailController.text, passwordController.text,
             context, emailController, passwordController);
-        debugPrint("++++++++vous avez appuyer de le bouton connexion email+mp+++++++++++++");
+        debugPrint(
+            "++++++++vous avez appuyer de le bouton connexion email+mp+++++++++++++");
       },
       style: ElevatedButton.styleFrom(
         shape: const StadiumBorder(),
@@ -219,23 +247,61 @@ class _LoginPageState extends State<LoginPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Tab(icon: Image.asset("assets/logo_login/facebook.png")),
+              // Connexion avec Facebook
               GestureDetector(
                 onTap: () async {
-                    final user = await AuthService().loginWithGoogle(context);
-                      //Navigator.pushReplacementNamed(context, '/home');
-                      print("///////////////${user!.uid}///////////////////");
+                  final user = await loginWithFacebook(context);
+                  if (user != null) {
+                    debugPrint("Connexion réussie avec Facebook: ${user.uid}");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(
+                          "Bienvenue, ${user.email}! Connexion réussie.")),
+                    );
+                  } else {
+                    debugPrint("Échec de connexion Facebook.");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Échec de connexion Facebook.")),
+                    );
+                  }
                 },
                 child: SizedBox(
-                  width: 40, // Taille personnalisée
+                  width: 40,
                   height: 40,
                   child: Image.asset(
-                    "assets/logo_login/google.png",
-                    fit: BoxFit.contain, // Ajuste l'image
+                    "assets/logo_login/facebook.png",
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
 
+              // Connexion avec Google
+              GestureDetector(
+                onTap: () async {
+                  final user = await loginWithGoogle(context);
+                  if (user != null) {
+                    debugPrint("Connexion réussie avec Google: ${user.uid}");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(
+                          "Bienvenue, ${user.email}! Connexion réussie.")),
+                    );
+                  } else {
+                    debugPrint("Échec de connexion Google.");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Échec de connexion Google.")),
+                    );
+                  }
+                },
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Image.asset(
+                    "assets/logo_login/google.png",
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
             ],
           ),
         ],
