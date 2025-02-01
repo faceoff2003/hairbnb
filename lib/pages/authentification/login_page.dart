@@ -1,12 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/authentification/authentification_services/login_with_google.dart';
 import 'package:hairbnb/pages/authentification/signup_page.dart';
-import 'package:hairbnb/services/auth_services/auth_service.dart';
 
+import 'authentification_services/login_with_email.dart';
 import 'authentification_services/login_with_facebook.dart';
-import 'authentification_services/login_with_google.dart';
-import 'authentification_services/sign_up_with_google.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -17,7 +14,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  //final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   late Color myColor;
   late Size mediaSize;
   TextEditingController emailController = TextEditingController();
@@ -41,7 +38,9 @@ class _LoginPageState extends State<LoginPage> {
           image: const AssetImage("assets/logo_login/bg.png"),
           fit: BoxFit.cover,
           colorFilter:
-          ColorFilter.mode(myColor.withOpacity(0.2), BlendMode.dstATop),
+          ColorFilter.mode(
+              myColor.withAlpha((0.2 * 255).toInt()),
+              BlendMode.dstATop),
         ),
       ),
       child: Scaffold(
@@ -222,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLoginButton() {
     return ElevatedButton(
       onPressed: () {
-        AuthService().loginUserWithEmailandPassword(
+        loginUserWithEmailandPassword(
             emailController.text, passwordController.text,
             context, emailController, passwordController);
         debugPrint(

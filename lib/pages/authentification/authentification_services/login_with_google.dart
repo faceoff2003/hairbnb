@@ -50,6 +50,7 @@ Future<User?> loginWithGoogle(BuildContext context) async {
       await FirebaseAuth.instance.fetchSignInMethodsForEmail(
           googleUser.email);
 
+
       if (signInMethods.isEmpty) {
         // Aucun compte trouvé : afficher la boîte de dialogue
 

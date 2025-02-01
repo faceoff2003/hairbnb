@@ -1,0 +1,2 @@
+C:/Users/Admin/StudioProjects/hairbnb/android/app/.cxx/RelWithDebInfo/3y4n496e/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Admin/StudioProjects/hairbnb/android/app/.cxx/RelWithDebInfo/3y4n496e/armeabi-v7a/CMakeFiles/rebuild_cache.dir

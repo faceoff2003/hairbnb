@@ -1,13 +1,5 @@
-/// * [Material.dart] : classe [MaterialApp] pour afficher la page de connexion.
-/// * [FirebaseAuth] : classe [FirebaseAuth] pour gerer les utilisateurs et leur
-///   connexion.
-/// * [GoogleSignIn] : classe [GoogleSignIn] pour gerer la connexion avec un compte
-///   Google.
-/// * [AuthService] : classe [AuthService] pour gerer les differentes methodes de
-///   connexion (connexion avec email et mot de passe, connexion avec Google, etc).
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hairbnb/pages/authentification/authentification_services/login_with_google.dart';
 import '../../services/auth_services/auth_service.dart';
 import 'authentification_services/sign_up_with_facebook.dart';

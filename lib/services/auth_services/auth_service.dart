@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'package:hairbnb/pages/home_page.dart';
 import '../../pages/profil/profil_creation_page.dart';
 
 class AuthService {
@@ -247,51 +246,51 @@ class AuthService {
   //   }
   // }
 
-  /// Méthode pour se connecter avec Facebook
-  Future<User?> loginWithFacebook(BuildContext context) async {
-    try {
-      final LoginResult loginResult = await FacebookAuth.instance.login(
-        permissions: ['email', 'public_profile'],
-      );
-
-      if (loginResult.status != LoginStatus.success) {
-        debugPrint("Connexion Facebook annulée ou échouée.");
-        return null;
-      }
-
-      final OAuthCredential credential =
-      FacebookAuthProvider.credential(loginResult.accessToken!.tokenString);
-
-      final UserCredential userCredential =
-      await _firebaseAuth.signInWithCredential(credential);
-
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        final signInMethods =
-        await _firebaseAuth.fetchSignInMethodsForEmail(user.email!);
-
-        if (signInMethods.isEmpty) {
-          debugPrint("Utilisateur non trouvé : ${user.email}");
-          throw FirebaseAuthException(
-            code: 'user-not-found',
-            message: "Ce compte n'existe pas.",
-          );
-        }
-
-        debugPrint("Utilisateur Facebook connecté avec succès : ${user.email}");
-        return user;
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint("Erreur inattendue lors de la connexion Facebook : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erreur lors de la connexion Facebook.")),
-      );
-      return null;
-    }
-  }
+  // /// Méthode pour se connecter avec Facebook
+  // Future<User?> loginWithFacebook(BuildContext context) async {
+  //   try {
+  //     final LoginResult loginResult = await FacebookAuth.instance.login(
+  //       permissions: ['email', 'public_profile'],
+  //     );
+  //
+  //     if (loginResult.status != LoginStatus.success) {
+  //       debugPrint("Connexion Facebook annulée ou échouée.");
+  //       return null;
+  //     }
+  //
+  //     final OAuthCredential credential =
+  //     FacebookAuthProvider.credential(loginResult.accessToken!.tokenString);
+  //
+  //     final UserCredential userCredential =
+  //     await _firebaseAuth.signInWithCredential(credential);
+  //
+  //     final User? user = userCredential.user;
+  //
+  //     if (user != null) {
+  //       final signInMethods =
+  //       await _firebaseAuth.fetchSignInMethodsForEmail(user.email!);
+  //
+  //       if (signInMethods.isEmpty) {
+  //         debugPrint("Utilisateur non trouvé : ${user.email}");
+  //         throw FirebaseAuthException(
+  //           code: 'user-not-found',
+  //           message: "Ce compte n'existe pas.",
+  //         );
+  //       }
+  //
+  //       debugPrint("Utilisateur Facebook connecté avec succès : ${user.email}");
+  //       return user;
+  //     }
+  //
+  //     return null;
+  //   } catch (e) {
+  //     debugPrint("Erreur inattendue lors de la connexion Facebook : $e");
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Erreur lors de la connexion Facebook.")),
+  //     );
+  //     return null;
+  //   }
+  // }
 
   /// Méthode pour se déconnecter de Google
   Future<void> logoutWithGoogle() async {
@@ -395,55 +394,55 @@ class AuthService {
     }
   }
 
-  Future<void> loginUserWithEmailandPassword(String email,
-      String password,
-      BuildContext context,
-      TextEditingController emailController,
-      TextEditingController passwordController) async {
-    try {
-      // Étape 1 : Connexion de l'utilisateur
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      debugPrint("Utilisateur connecté : ${userCredential.user?.email}");
-
-      // Étape 2 : Vérifie si le widget est encore monté avant d'utiliser le context
-      if (!context.mounted) return;
-
-      // Étape 3 : Vider les champs de texte
-      emailController.clear();
-      passwordController.clear();
-
-      // Étape 4 : Redirection après connexion réussie
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      // Étape 5 : Gestion des erreurs Firebase
-      String message;
-      if (e.code == 'user-not-found') {
-        message = "Aucun utilisateur trouvé avec cet email.";
-      } else if (e.code == 'wrong-password') {
-        message = "Mot de passe incorrect.";
-      } else {
-        message = "Erreur : ${e.message}";
-      }
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)));
-    } catch (e) {
-      debugPrint("Erreur inconnue : $e");
-
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Une erreur inattendue s'est produite.")),
-      );
-    }
-  }
+  // Future<void> loginUserWithEmailandPassword(String email,
+  //     String password,
+  //     BuildContext context,
+  //     TextEditingController emailController,
+  //     TextEditingController passwordController) async {
+  //   try {
+  //     // Étape 1 : Connexion de l'utilisateur
+  //     UserCredential userCredential = await FirebaseAuth.instance
+  //         .signInWithEmailAndPassword(
+  //       email: email,
+  //       password: password,
+  //     );
+  //     debugPrint("Utilisateur connecté : ${userCredential.user?.email}");
+  //
+  //     // Étape 2 : Vérifie si le widget est encore monté avant d'utiliser le context
+  //     if (!context.mounted) return;
+  //
+  //     // Étape 3 : Vider les champs de texte
+  //     emailController.clear();
+  //     passwordController.clear();
+  //
+  //     // Étape 4 : Redirection après connexion réussie
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(builder: (context) => const HomePage()),
+  //     );
+  //   } on FirebaseAuthException catch (e) {
+  //     // Étape 5 : Gestion des erreurs Firebase
+  //     String message;
+  //     if (e.code == 'user-not-found') {
+  //       message = "Aucun utilisateur trouvé avec cet email.";
+  //     } else if (e.code == 'wrong-password') {
+  //       message = "Mot de passe incorrect.";
+  //     } else {
+  //       message = "Erreur : ${e.message}";
+  //     }
+  //
+  //     if (!context.mounted) return;
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text(message)));
+  //   } catch (e) {
+  //     debugPrint("Erreur inconnue : $e");
+  //
+  //     if (!context.mounted) return;
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text("Une erreur inattendue s'est produite.")),
+  //     );
+  //   }
+  // }
 }
