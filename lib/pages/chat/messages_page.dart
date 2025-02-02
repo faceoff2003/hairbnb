@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:hairbnb/services/providers/current_user_provider.dart';
+import 'package:hairbnb/widgets/Custom_app_bar.dart';
+import 'package:provider/provider.dart' show Provider;
 import 'chat_page.dart';
 
 class MessagesPage extends StatefulWidget {
-  final String clientId;
+  //final String clientId;
 
-  const MessagesPage({Key? key, required this.clientId}) : super(key: key);
+  const MessagesPage({Key? key}) : super(key: key);
 
   @override
   _MessagesPageState createState() => _MessagesPageState();
@@ -17,11 +20,7 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Chats"),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF6D20A5),
-      ),
+      appBar: CustomAppBar(),
       body: StreamBuilder(
         stream: databaseRef.onValue,
         builder: (context, snapshot) {
@@ -41,10 +40,16 @@ class _MessagesPageState extends State<MessagesPage> {
           if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
             final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>? ?? {};
 
+            final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
+      //------------------------------------------------------------------------------------------
+            print('le uuid current user est : '+currentUser!.uuid);
+      //-----------------------------------------------------------------------------
             // Filtrer uniquement les conversations de l'utilisateur actuel
             final conversations = data.entries.where((entry) {
-              return entry.key.startsWith("currentUserUuid_");
+              return entry.key.contains(currentUser.uuid);
+
             }).map((entry) {
+
               final conversationKey = entry.key;
               final messages = entry.value['messages'] as Map<dynamic, dynamic>? ?? {};
               if (messages.isEmpty) return null;
@@ -52,11 +57,15 @@ class _MessagesPageState extends State<MessagesPage> {
               final lastMessageKey = messages.keys.last;
               final lastMessage = messages[lastMessageKey];
 
+              // Identifier si currentUser est le client ou la coiffeuse
+              final participants = conversationKey.split("_");
+              final coiffeuseId = (participants[0] == currentUser.uuid) ? participants[1] : participants[0];
+
               return {
                 "conversationKey": conversationKey,
                 "lastMessage": lastMessage?['text'] ?? "Pas de message.",
                 "timestamp": lastMessage?['timestamp'] ?? "",
-                "coiffeuseId": conversationKey.split("_").last, // Extraire l'ID de la coiffeuse
+                "coiffeuseId": coiffeuseId, // Extraire l'ID de la coiffeuse
               };
             }).whereType<Map<String, dynamic>>().toList(); // Supprimer les null
 
@@ -72,6 +81,11 @@ class _MessagesPageState extends State<MessagesPage> {
               itemBuilder: (context, index) {
                 final conversation = conversations[index];
                 final coiffeuseId = conversation['coiffeuseId'];
+
+                //------------------------------------------------------------------------------------------
+                //print('le uuid coiffeuse est : '+conversation['sender']);
+                print('le uuid coiffeuse est : '+coiffeuseId);
+                //-----------------------------------------------------------------------------
 
                 return ListTile(
                   leading: const CircleAvatar(
@@ -92,7 +106,7 @@ class _MessagesPageState extends State<MessagesPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => ChatPage(
-                          clientId: widget.clientId,
+                          clientId: currentUser.uuid,
                           coiffeuseId: coiffeuseId,
                           coiffeuseName: "Coiffeuse $coiffeuseId",
                         ),

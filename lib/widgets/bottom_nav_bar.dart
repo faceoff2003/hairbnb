@@ -32,7 +32,7 @@ class BottomNavBar extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const MessagesPage(clientId: 'clientId'),
+          builder: (context) => const MessagesPage(),
         ),
       );
     } else if (index == 4) {
