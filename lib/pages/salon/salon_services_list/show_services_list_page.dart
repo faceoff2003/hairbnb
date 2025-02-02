@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:hairbnb/models/current_user.dart';
+import 'package:hairbnb/pages/salon/salon_services_list/promotion/create_promotion_page.dart';
+import 'package:hairbnb/services/providers/cart_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../models/Services.dart';
+import '../../../services/providers/current_user_provider.dart';
 import 'edit_service_page.dart';
+import 'add_service_page.dart';
 
 class ServicesListPage extends StatefulWidget {
   final String coiffeuseId;
@@ -19,16 +25,30 @@ class _ServicesListPageState extends State<ServicesListPage> {
   TextEditingController _searchController = TextEditingController();
   bool isLoading = false;
   bool hasError = false;
+  late String? currentUserId;
+  late final Service service;
 
   @override
   void initState() {
     super.initState();
+    _fetchCurrentUser();
     _fetchServices();
     _searchController.addListener(() {
       _filterServices(_searchController.text);
     });
   }
 
+  /// **📌 Récupérer l'ID de l'utilisateur actuel**
+  void _fetchCurrentUser() {
+    final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+    setState(() {
+      currentUserId = currentUserProvider.currentUser?.idTblUser.toString();
+    });
+
+    debugPrint("🟢 ID de l'utilisateur connecté : $currentUserId");
+  }
+
+  /// **📡 Charger les services de la coiffeuse**
   Future<void> _fetchServices() async {
     setState(() {
       isLoading = true;
@@ -36,28 +56,37 @@ class _ServicesListPageState extends State<ServicesListPage> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/'),
-      );
+      final url = Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/');
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final decodedBody = utf8.decode(response.bodyBytes);
-        final responseData = json.decode(decodedBody);
-        if (responseData['status'] == 'success') {
+        final responseData = json.decode(utf8.decode(response.bodyBytes));
+        if (responseData['status'] == 'success' && responseData['salon'].containsKey('services')) {
           setState(() {
             services = (responseData['salon']['services'] as List)
-                .map((json) => Service.fromJson(json))
+                .map((json) {
+              try {
+                return Service.fromJson(json);
+              } catch (e) {
+                //--------------------------------------------------------------
+                debugPrint("❌ show services list : Erreur JSON -> Service : $e");
+                //--------------------------------------------------------------
+                //debugPrint("❌ Erreur JSON -> Service : $e");
+                return null;
+              }
+            })
+                .whereType<Service>()
                 .toList();
-            filteredServices = List.from(services); // Initialise la liste affichée
+            filteredServices = List.from(services);
           });
         } else {
-          _showError("Erreur: ${responseData['message']}");
+          _showError("Format incorrect des données reçues.");
         }
       } else {
-        _showError("Erreur lors du chargement des services.");
+        _showError("Erreur serveur: Code ${response.statusCode}");
       }
     } catch (e) {
-      _showError("Erreur de connexion au serveur.");
+      _showError("Erreur de connexion au serveur : $e");
     } finally {
       setState(() {
         isLoading = false;
@@ -65,6 +94,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
     }
   }
 
+  /// **🔍 Filtrer les services selon la recherche**
   void _filterServices(String query) {
     setState(() {
       filteredServices = services
@@ -75,25 +105,34 @@ class _ServicesListPageState extends State<ServicesListPage> {
     });
   }
 
-  Future<void> _deleteService(int serviceId, int index) async {
-    setState(() {
-      filteredServices.removeAt(index); // Suppression instantanée dans l'UI
-      services.removeWhere((service) => service.id == serviceId);
-    });
-
+  /// **🗑️ Supprimer un service**
+  Future<void> _deleteService(int serviceId) async {
     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
     try {
       final response = await http.delete(url);
-      if (response.statusCode != 200) {
+      if (response.statusCode == 200) {
+        _fetchServices();
+      } else {
         _showError("Erreur lors de la suppression.");
-        _fetchServices(); // Recharge si erreur
       }
     } catch (e) {
       _showError("Erreur de connexion au serveur.");
-      _fetchServices(); // Recharge si erreur
     }
   }
 
+  /// **🛒 Ajouter un service au panier**
+  void _ajouterAuPanier(Service service) {
+    Provider.of<CartProvider>(context, listen: false).addToCart(service,currentUserId!);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("${service.intitule} ajouté au panier ✅"), backgroundColor: Colors.green),
+    );
+      //---------------------------------------------------------------------------------
+      print('id service dans _ajouterAuPanier est : ${service.id}');
+      //---------------------------------------------------------------------------------
+
+  }
+
+  /// **⚠️ Afficher une erreur**
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
@@ -102,6 +141,8 @@ class _ServicesListPageState extends State<ServicesListPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
@@ -112,6 +153,18 @@ class _ServicesListPageState extends State<ServicesListPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      floatingActionButton: isOwner
+          ? FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddServicePage(coiffeuseId: widget.coiffeuseId)),
+          ).then((_) => _fetchServices());
+        },
+        child: const Icon(Icons.add),
+        backgroundColor: Colors.orange,
+      )
+          : null,
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : hasError
@@ -120,104 +173,1614 @@ class _ServicesListPageState extends State<ServicesListPage> {
           ? const Center(child: Text("Aucun service trouvé."))
           : Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔎 Barre de recherche
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: "Rechercher un service...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.grey[200],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide.none,
+        child: ListView.builder(
+          itemCount: filteredServices.length,
+          itemBuilder: (context, index) {
+            final service = filteredServices[index];
+            final color = Colors.primaries[index % Colors.primaries.length][100];
+            return Card(
+              color: color,
+              margin: const EdgeInsets.symmetric(vertical: 8.0),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: const Icon(Icons.cut, color: Colors.orange),
                 ),
+                title: Text(service.intitule, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Durée: ${service.temps} min"),
+                    Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+                    if (service.promotion != null) ...[
+                      Text("Prix: ${service.prix}€", style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.red)),
+                      Text("Promo: ${service.getPrixAvecReduction()}€ 🔥", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+                    ] else ...[
+                      Text("Prix: ${service.prix}€"),
+                    ],
+                  ],
+                ),
+                trailing: isOwner
+                    ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(icon: const Icon(Icons.local_offer, color: Colors.purple), onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => CreatePromotionPage(serviceId: service.id),
+                      )).then((_) => _fetchServices());
+                    }),
+                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (context) => EditServicePage(service: service, onServiceUpdated: _fetchServices),
+                      ));
+                    }),
+                    IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteService(service.id)),
+                  ],
+                )
+                    : IconButton(icon: const Icon(Icons.shopping_cart, color: Colors.green), onPressed: () => _ajouterAuPanier(service)),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // 🔽 Liste des services
-            Expanded(
-              child: ListView.builder(
-                itemCount: filteredServices.length,
-                itemBuilder: (context, index) {
-                  final service = filteredServices[index];
-                  final color = Colors.primaries[index % Colors.primaries.length][100];
-
-                  return Card(
-                    color: color,
-                    margin: const EdgeInsets.symmetric(vertical: 8.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        child: const Icon(Icons.miscellaneous_services, color: Colors.black),
-                      ),
-                      title: Text(
-                        service.intitule,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
-                          Text("Prix: ${service.prix} € | Temps: ${service.temps} min"),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditServicePage(
-                                    service: service,
-                                    onServiceUpdated: _fetchServices,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteService(service.id, index),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+            );
+          },
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddServicePage(coiffeuseId: widget.coiffeuseId, onServiceAdded: _fetchServices),
-            ),
-          );
-        },
-        backgroundColor: Colors.orange,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/pages/salon/salon_services_list/promotion/create_promotion_page.dart';
+// import 'package:hairbnb/services/providers/cart_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import '../../../services/providers/current_user_provider.dart';
+// import 'edit_service_page.dart';
+// import 'add_service_page.dart'; // ✅ Page pour ajouter un service
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//   String? currentUserId;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchCurrentUser();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   /// **📌 Récupérer l'ID de l'utilisateur actuel**
+//   void _fetchCurrentUser() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     setState(() {
+//       currentUserId = currentUserProvider.currentUser?.idTblUser.toString();
+//     });
+//
+//     debugPrint("🟢 ID de l'utilisateur connecté : $currentUserId");
+//   }
+//
+//   /// **📡 Charger les services de la coiffeuse**
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final url = Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/');
+//       final response = await http.get(url);
+//
+//       if (response.statusCode == 200) {
+//         final responseData = json.decode(utf8.decode(response.bodyBytes));
+//         if (responseData['status'] == 'success' && responseData['salon'].containsKey('services')) {
+//           setState(() {
+//             services = (responseData['salon']['services'] as List)
+//                 .map((json) {
+//               try {
+//                 return Service.fromJson(json);
+//               } catch (e) {
+//                 debugPrint("❌ Erreur JSON -> Service : $e");
+//                 return null;
+//               }
+//             })
+//                 .whereType<Service>()
+//                 .toList();
+//             filteredServices = List.from(services);
+//           });
+//         } else {
+//           _showError("Format incorrect des données reçues.");
+//         }
+//       } else {
+//         _showError("Erreur serveur: Code ${response.statusCode}");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur : $e");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   /// **🔍 Filtrer les services selon la recherche**
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   /// **🗑️ Supprimer un service**
+//   Future<void> _deleteService(int serviceId) async {
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode == 200) {
+//         _fetchServices();
+//       } else {
+//         _showError("Erreur lors de la suppression.");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//     }
+//   }
+//
+//   /// **🛒 Ajouter un service au panier**
+//   void _ajouterAuPanier(Service service) {
+//     Provider.of<CartProvider>(context, listen: false).addToCart(service);
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text("${service.intitule} ajouté au panier ✅"), backgroundColor: Colors.green),
+//     );
+//   }
+//
+//   /// **⚠️ Afficher une erreur**
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
+//
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       floatingActionButton: isOwner
+//           ? FloatingActionButton(
+//         onPressed: () {
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(builder: (context) => AddServicePage(coiffeuseId: widget.coiffeuseId)),
+//           ).then((_) => _fetchServices());
+//         },
+//         child: const Icon(Icons.add),
+//         backgroundColor: Colors.orange,
+//       )
+//           : null,
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: ListView.builder(
+//           itemCount: filteredServices.length,
+//           itemBuilder: (context, index) {
+//             final service = filteredServices[index];
+//             return Card(
+//               margin: const EdgeInsets.symmetric(vertical: 8.0),
+//               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+//               child: ListTile(
+//                 leading: CircleAvatar(
+//                   backgroundColor: Colors.white,
+//                   child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                 ),
+//                 title: Text(service.intitule, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+//                 subtitle: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     if (service.promotion != null) ...[
+//                       Text("Prix: ${service.prix}€", style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.red)),
+//                       Text("Promo: ${service.getPrixAvecReduction()}€ 🔥", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+//                     ] else ...[
+//                       Text("Prix: ${service.prix}€"),
+//                     ],
+//                   ],
+//                 ),
+//                 trailing: isOwner
+//                     ? Row(
+//                   mainAxisSize: MainAxisSize.min,
+//                   children: [
+//                     IconButton(icon: const Icon(Icons.local_offer, color: Colors.purple), onPressed: () {
+//                       Navigator.push(context, MaterialPageRoute(
+//                         builder: (context) => CreatePromotionPage(serviceId: service.id),
+//                       )).then((_) => _fetchServices());
+//                     }),
+//                     IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () {
+//                       Navigator.push(context, MaterialPageRoute(
+//                         builder: (context) => EditServicePage(service: service, onServiceUpdated: _fetchServices),
+//                       ));
+//                     }),
+//                     IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _deleteService(service.id)),
+//                   ],
+//                 )
+//                     : IconButton(icon: const Icon(Icons.shopping_cart, color: Colors.green), onPressed: () => _ajouterAuPanier(service)),
+//               ),
+//             );
+//           },
+//         ),
+//       ),
+//     );
+//   }
+// }
+//
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/services/providers/cart_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import '../../../services/providers/current_user_provider.dart';
+// import 'edit_service_page.dart';
+// import 'add_service_page.dart'; // Import de la page d'ajout
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//   String? currentUserId;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchCurrentUser();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   /// **📌 Récupérer l'ID de l'utilisateur actuel**
+//   void _fetchCurrentUser() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     setState(() {
+//       currentUserId = currentUserProvider.currentUser?.idTblUser.toString(); // Assure que c'est bien un String
+//     });
+//
+//     debugPrint("🟢 ID de l'utilisateur connecté : $currentUserId");
+//   }
+//
+//   /// **📡 Charger les services de la coiffeuse**
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final url = Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/');
+//       debugPrint("🔗 Envoi de la requête à : $url");
+//
+//       final response = await http.get(url);
+//
+//       debugPrint("🔍 Statut HTTP : ${response.statusCode}");
+//
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         final responseData = json.decode(decodedBody);
+//
+//         debugPrint("📥 Réponse reçue : $responseData");
+//
+//         if (responseData['status'] == 'success') {
+//           // ✅ Vérification de la structure des données
+//           if (responseData.containsKey('salon') && responseData['salon'].containsKey('services')) {
+//             setState(() {
+//               services = (responseData['salon']['services'] as List)
+//                   .map((json) {
+//                 try {
+//                   return Service.fromJson(json);
+//                 } catch (e) {
+//                   debugPrint("❌ Erreur lors de la conversion JSON -> Service : $e");
+//                   return null; // Évite un crash si un service est invalide
+//                 }
+//               })
+//                   .whereType<Service>() // Supprime les valeurs null
+//                   .toList();
+//
+//               filteredServices = List.from(services);
+//             });
+//           } else {
+//             _showError("Format incorrect des données reçues.");
+//           }
+//         } else {
+//           _showError("Erreur API: ${responseData['message']}");
+//         }
+//       } else {
+//         _showError("Erreur serveur: Code ${response.statusCode}");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur : $e");
+//       debugPrint("❌ Exception Flutter : $e");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//
+//
+//   /// **🔍 Filtrer les services selon la recherche**
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   /// **🗑️ Supprimer un service**
+//   Future<void> _deleteService(int serviceId, int index) async {
+//     setState(() {
+//       filteredServices.removeAt(index);
+//       services.removeWhere((service) => service.id == serviceId);
+//     });
+//
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode != 200) {
+//         _showError("Erreur lors de la suppression.");
+//         _fetchServices();
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//       _fetchServices();
+//     }
+//   }
+//
+//   /// **🛒 Ajouter un service au panier**
+//   void _ajouterAuPanier(Service service) {
+//     Provider.of<CartProvider>(context, listen: false).addToCart(service);
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text("${service.intitule} ajouté au panier ✅"),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   }
+//
+//   /// **⚠️ Afficher une erreur**
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     debugPrint("🔍 Vérification: currentUserId = $currentUserId, coiffeuseId = ${widget.coiffeuseId}");
+//     bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
+//
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // 🔎 Barre de recherche
+//             TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: "Rechercher un service...",
+//                 prefixIcon: const Icon(Icons.search),
+//                 filled: true,
+//                 fillColor: Colors.grey[200],
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10.0),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+//
+//             // 🔽 Liste des services
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: filteredServices.length,
+//                 itemBuilder: (context, index) {
+//                   final service = filteredServices[index];
+//                   final color = Colors.primaries[index % Colors.primaries.length][100];
+//
+//                   return Card(
+//                     color: color,
+//                     margin: const EdgeInsets.symmetric(vertical: 8.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10.0),
+//                     ),
+//                     child: ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundColor: Colors.white,
+//                         child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                       ),
+//                       title: Text(
+//                         service.intitule,
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+//                           service.promotion != null
+//                               ? Column(
+//                             crossAxisAlignment: CrossAxisAlignment.start,
+//                             children: [
+//                               Text("Prix: ${service.prix}€", style: TextStyle(decoration: TextDecoration.lineThrough, color: Colors.red)),
+//                               Text("Promo: ${service.getPrixAvecReduction()}€ 🔥", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+//                             ],
+//                           )
+//                               : Text("Prix: ${service.prix}€"),
+//                         ],
+//                       ),
+//                       trailing: isOwner
+//                           ? IconButton(icon: Icon(Icons.edit), onPressed: () => print("Modifier"))
+//                           : IconButton(icon: Icon(Icons.shopping_cart, color: Colors.green), onPressed: () => _ajouterAuPanier(service)),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+//------------------------ce code fonction mais il faut rajouter les promotions-----------------
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/services/providers/cart_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import '../../../services/providers/current_user_provider.dart';
+// import 'edit_service_page.dart';
+// import 'add_service_page.dart'; // Import de la page d'ajout
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//   String? currentUserId;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchCurrentUser();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   /// **📌 Récupérer l'ID de l'utilisateur actuel**
+//   void _fetchCurrentUser() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     setState(() {
+//       currentUserId = currentUserProvider.currentUser?.idTblUser.toString(); // Assure que c'est bien un String
+//     });
+//
+//     debugPrint("🟢 ID de l'utilisateur connecté : $currentUserId");
+//   }
+//
+//   /// **📡 Charger les services de la coiffeuse**
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final response = await http.get(
+//         Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/'),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         final responseData = json.decode(decodedBody);
+//         if (responseData['status'] == 'success') {
+//           setState(() {
+//             services = (responseData['salon']['services'] as List)
+//                 .map((json) => Service.fromJson(json))
+//                 .toList();
+//             filteredServices = List.from(services);
+//           });
+//         } else {
+//           _showError("Erreur: ${responseData['message']}");
+//         }
+//       } else {
+//         _showError("Erreur lors du chargement des services.");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   /// **🔍 Filtrer les services selon la recherche**
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   /// **🗑️ Supprimer un service**
+//   Future<void> _deleteService(int serviceId, int index) async {
+//     setState(() {
+//       filteredServices.removeAt(index);
+//       services.removeWhere((service) => service.id == serviceId);
+//     });
+//
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode != 200) {
+//         _showError("Erreur lors de la suppression.");
+//         _fetchServices();
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//       _fetchServices();
+//     }
+//   }
+//
+//   /// **🛒 Ajouter un service au panier**
+//   void _ajouterAuPanier(Service service) {
+//     Provider.of<CartProvider>(context, listen: false).addToCart(service);
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text("${service.intitule} ajouté au panier ✅"),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   }
+//
+//   /// **⚠️ Afficher une erreur**
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     debugPrint("🔍 Vérification: currentUserId = $currentUserId, coiffeuseId = ${widget.coiffeuseId}");
+//     bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
+//
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // 🔎 Barre de recherche
+//             TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: "Rechercher un service...",
+//                 prefixIcon: const Icon(Icons.search),
+//                 filled: true,
+//                 fillColor: Colors.grey[200],
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10.0),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+//
+//             // 🔽 Liste des services
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: filteredServices.length,
+//                 itemBuilder: (context, index) {
+//                   final service = filteredServices[index];
+//                   final color = Colors.primaries[index % Colors.primaries.length][100];
+//
+//                   return Card(
+//                     color: color,
+//                     margin: const EdgeInsets.symmetric(vertical: 8.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10.0),
+//                     ),
+//                     child: ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundColor: Colors.white,
+//                         child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                       ),
+//                       title: Text(
+//                         service.intitule,
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+//                           Text("Prix: ${service.prix} € | Temps: ${service.temps} min"),
+//                         ],
+//                       ),
+//                       trailing: isOwner
+//                           ? Row(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           IconButton(
+//                             icon: const Icon(Icons.edit, color: Colors.blue),
+//                             onPressed: () {
+//                               Navigator.push(
+//                                 context,
+//                                 MaterialPageRoute(
+//                                   builder: (context) => EditServicePage(
+//                                     service: service,
+//                                     onServiceUpdated: _fetchServices,
+//                                   ),
+//                                 ),
+//                               );
+//                             },
+//                           ),
+//                           IconButton(
+//                             icon: const Icon(Icons.delete, color: Colors.red),
+//                             onPressed: () => _deleteService(service.id, index),
+//                           ),
+//                         ],
+//                       )
+//                           : IconButton(
+//                         icon: const Icon(Icons.shopping_cart, color: Colors.green),
+//                         onPressed: () => _ajouterAuPanier(service),
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//       floatingActionButton: isOwner
+//           ? FloatingActionButton(
+//         onPressed: () {
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(
+//               builder: (context) => AddServicePage(
+//                 coiffeuseId: widget.coiffeuseId,
+//                 onServiceAdded: _fetchServices, // 🔥 Correction ajoutée ici
+//               ),
+//             ),
+//           );
+//         },
+//         backgroundColor: Colors.orange,
+//         child: const Icon(Icons.add, color: Colors.white),
+//       )
+//           : null,
+//
+//     );
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/services/providers/cart_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import '../../../services/providers/current_user_provider.dart';
+// import 'edit_service_page.dart';
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//   String? currentUserId;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchCurrentUser();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   /// **📌 Récupérer l'UUID de l'utilisateur actuel**
+//   void _fetchCurrentUser() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     setState(() {
+//       currentUserId = currentUserProvider.currentUser?.idTblUser.toString(); // Assure que c'est bien un String
+//     });
+//
+//     debugPrint("🟢 ID de l'utilisateur connecté : $currentUserId");
+//   }
+//
+//   /// **📡 Charger les services de la coiffeuse**
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final response = await http.get(
+//         Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/'),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         final responseData = json.decode(decodedBody);
+//         if (responseData['status'] == 'success') {
+//           setState(() {
+//             services = (responseData['salon']['services'] as List)
+//                 .map((json) => Service.fromJson(json))
+//                 .toList();
+//             filteredServices = List.from(services);
+//           });
+//         } else {
+//           _showError("Erreur: ${responseData['message']}");
+//         }
+//       } else {
+//         _showError("Erreur lors du chargement des services.");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   /// **🔍 Filtrer les services selon la recherche**
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   /// **🗑️ Supprimer un service**
+//   Future<void> _deleteService(int serviceId, int index) async {
+//     setState(() {
+//       filteredServices.removeAt(index);
+//       services.removeWhere((service) => service.id == serviceId);
+//     });
+//
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode != 200) {
+//         _showError("Erreur lors de la suppression.");
+//         _fetchServices();
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//       _fetchServices();
+//     }
+//   }
+//
+//   /// **🛒 Ajouter un service au panier**
+//   void _ajouterAuPanier(Service service) {
+//     Provider.of<CartProvider>(context, listen: false).addToCart(service);
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text("${service.intitule} ajouté au panier ✅"),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   }
+//
+//   /// **⚠️ Afficher une erreur**
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     debugPrint("🔍 Vérification: currentUserId = $currentUserId, coiffeuseId = ${widget.coiffeuseId}");
+//     bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
+//
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // 🔎 Barre de recherche
+//             TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: "Rechercher un service...",
+//                 prefixIcon: const Icon(Icons.search),
+//                 filled: true,
+//                 fillColor: Colors.grey[200],
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10.0),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+//
+//             // 🔽 Liste des services
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: filteredServices.length,
+//                 itemBuilder: (context, index) {
+//                   final service = filteredServices[index];
+//                   final color = Colors.primaries[index % Colors.primaries.length][100];
+//
+//                   return Card(
+//                     color: color,
+//                     margin: const EdgeInsets.symmetric(vertical: 8.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10.0),
+//                     ),
+//                     child: ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundColor: Colors.white,
+//                         child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                       ),
+//                       title: Text(
+//                         service.intitule,
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+//                           Text("Prix: ${service.prix} € | Temps: ${service.temps} min"),
+//                         ],
+//                       ),
+//                       trailing: isOwner
+//                           ? Row(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           IconButton(
+//                             icon: const Icon(Icons.edit, color: Colors.blue),
+//                             onPressed: () {
+//                               Navigator.push(
+//                                 context,
+//                                 MaterialPageRoute(
+//                                   builder: (context) => EditServicePage(
+//                                     service: service,
+//                                     onServiceUpdated: _fetchServices,
+//                                   ),
+//                                 ),
+//                               );
+//                             },
+//                           ),
+//                           IconButton(
+//                             icon: const Icon(Icons.delete, color: Colors.red),
+//                             onPressed: () => _deleteService(service.id, index),
+//                           ),
+//                         ],
+//                       )
+//                           : IconButton(
+//                         icon: const Icon(Icons.shopping_cart, color: Colors.green),
+//                         onPressed: () => _ajouterAuPanier(service),
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+
+
+
+
+//
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/services/providers/cart_provider.dart';
+// import 'package:provider/provider.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import '../../../services/providers/current_user_provider.dart';
+// import 'edit_service_page.dart';
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//   late int currentUserId;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchCurrentUser();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   /// **📌 Récupérer l'UUID de l'utilisateur actuel**
+//   void _fetchCurrentUser() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     setState(() {
+//       currentUserId = currentUserProvider.currentUser!.idTblUser; // Stocke l'UUID de l'utilisateur connecté
+//     });
+//   }
+//
+//   /// **📡 Charger les services de la coiffeuse**
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final response = await http.get(
+//         Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/'),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         final responseData = json.decode(decodedBody);
+//         if (responseData['status'] == 'success') {
+//           setState(() {
+//             services = (responseData['salon']['services'] as List)
+//                 .map((json) => Service.fromJson(json))
+//                 .toList();
+//             filteredServices = List.from(services);
+//           });
+//         } else {
+//           _showError("Erreur: ${responseData['message']}");
+//         }
+//       } else {
+//         _showError("Erreur lors du chargement des services.");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   /// **🔍 Filtrer les services selon la recherche**
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   /// **🗑️ Supprimer un service**
+//   Future<void> _deleteService(int serviceId, int index) async {
+//     setState(() {
+//       filteredServices.removeAt(index);
+//       services.removeWhere((service) => service.id == serviceId);
+//     });
+//
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode != 200) {
+//         _showError("Erreur lors de la suppression.");
+//         _fetchServices();
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//       _fetchServices();
+//     }
+//   }
+//
+//   /// **🛒 Ajouter un service au panier**
+//   void _ajouterAuPanier(Service service) {
+//     // 🔧 Ajouter ici la logique pour le panier (Exemple: appeler une API ou stocker localement)
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text("${service.intitule} ajouté au panier !"),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   }
+//
+//   /// **⚠️ Afficher une erreur**
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//
+//     print("🔍 Vérification: currentUserId = $currentUserId, coiffeuseId = ${widget.coiffeuseId}");
+//     bool isOwner = currentUserId.toString() == widget.coiffeuseId.toString();
+//
+//
+//     //----------------------------------------------------------------------------------------
+//     print('le id de current user est : '+currentUserId.toString());
+//     print('le id de current la coiffeuse est : '+widget.coiffeuseId);
+//
+//     //-----------------------------------------------------------------------------------------
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // 🔎 Barre de recherche
+//             TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: "Rechercher un service...",
+//                 prefixIcon: const Icon(Icons.search),
+//                 filled: true,
+//                 fillColor: Colors.grey[200],
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10.0),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+//
+//             // 🔽 Liste des services
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: filteredServices.length,
+//                 itemBuilder: (context, index) {
+//                   final service = filteredServices[index];
+//                   final color = Colors.primaries[index % Colors.primaries.length][100];
+//
+//                   return Card(
+//                     color: color,
+//                     margin: const EdgeInsets.symmetric(vertical: 8.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10.0),
+//                     ),
+//                     child: ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundColor: Colors.white,
+//                         child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                       ),
+//                       title: Text(
+//                         service.intitule,
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+//                           Text("Prix: ${service.prix} € | Temps: ${service.temps} min"),
+//                         ],
+//                       ),
+//                       trailing: currentUserId == widget.coiffeuseId
+//                           ? Row(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           IconButton(
+//                             icon: const Icon(Icons.edit, color: Colors.blue),
+//                             onPressed: () {
+//                               Navigator.push(
+//                                 context,
+//                                 MaterialPageRoute(
+//                                   builder: (context) => EditServicePage(
+//                                     service: service,
+//                                     onServiceUpdated: _fetchServices,
+//                                   ),
+//                                 ),
+//                               );
+//                             },
+//                           ),
+//                           IconButton(
+//                             icon: const Icon(Icons.delete, color: Colors.red),
+//                             onPressed: () => _deleteService(service.id, index),
+//                           ),
+//                         ],
+//                       )
+//                           : IconButton(
+//                         icon: const Icon(Icons.shopping_cart, color: Colors.green),
+//                         //onPressed: () => _ajouterAuPanier(service),
+//                           onPressed: ()
+//                           {
+//                             Provider.of<CartProvider>(context, listen: false).addToCart(service);
+//                             ScaffoldMessenger.of(context).showSnackBar(
+//                               const SnackBar(content: Text("Service ajouté au panier ✅")),
+//                             );
+//                           },
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+//
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//--------------------------------------------Code fonctionel il faut l'updater----------------------------------
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+// import '../../../models/Services.dart';
+// import 'edit_service_page.dart';
+//
+// class ServicesListPage extends StatefulWidget {
+//   final String coiffeuseId;
+//
+//   const ServicesListPage({Key? key, required this.coiffeuseId}) : super(key: key);
+//
+//   @override
+//   State<ServicesListPage> createState() => _ServicesListPageState();
+// }
+//
+// class _ServicesListPageState extends State<ServicesListPage> {
+//   List<Service> services = [];
+//   List<Service> filteredServices = [];
+//   TextEditingController _searchController = TextEditingController();
+//   bool isLoading = false;
+//   bool hasError = false;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchServices();
+//     _searchController.addListener(() {
+//       _filterServices(_searchController.text);
+//     });
+//   }
+//
+//   Future<void> _fetchServices() async {
+//     setState(() {
+//       isLoading = true;
+//       hasError = false;
+//     });
+//
+//     try {
+//       final response = await http.get(
+//         Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/'),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         final responseData = json.decode(decodedBody);
+//         if (responseData['status'] == 'success') {
+//           setState(() {
+//             services = (responseData['salon']['services'] as List)
+//                 .map((json) => Service.fromJson(json))
+//                 .toList();
+//             filteredServices = List.from(services); // Initialise la liste affichée
+//           });
+//         } else {
+//           _showError("Erreur: ${responseData['message']}");
+//         }
+//       } else {
+//         _showError("Erreur lors du chargement des services.");
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   void _filterServices(String query) {
+//     setState(() {
+//       filteredServices = services
+//           .where((service) =>
+//       service.intitule.toLowerCase().contains(query.toLowerCase()) ||
+//           (service.description ?? '').toLowerCase().contains(query.toLowerCase()))
+//           .toList();
+//     });
+//   }
+//
+//   Future<void> _deleteService(int serviceId, int index) async {
+//     setState(() {
+//       filteredServices.removeAt(index); // Suppression instantanée dans l'UI
+//       services.removeWhere((service) => service.id == serviceId);
+//     });
+//
+//     final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+//     try {
+//       final response = await http.delete(url);
+//       if (response.statusCode != 200) {
+//         _showError("Erreur lors de la suppression.");
+//         _fetchServices(); // Recharge si erreur
+//       }
+//     } catch (e) {
+//       _showError("Erreur de connexion au serveur.");
+//       _fetchServices(); // Recharge si erreur
+//     }
+//   }
+//
+//   void _showError(String message) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text(message, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Mes Services", style: TextStyle(color: Colors.orange)),
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Colors.black),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : hasError
+//           ? Center(child: ElevatedButton(onPressed: _fetchServices, child: const Text("Réessayer")))
+//           : services.isEmpty
+//           ? const Center(child: Text("Aucun service trouvé."))
+//           : Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // 🔎 Barre de recherche
+//             TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: "Rechercher un service...",
+//                 prefixIcon: const Icon(Icons.search),
+//                 filled: true,
+//                 fillColor: Colors.grey[200],
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10.0),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(height: 20),
+//
+//             // 🔽 Liste des services
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: filteredServices.length,
+//                 itemBuilder: (context, index) {
+//                   final service = filteredServices[index];
+//                   final color = Colors.primaries[index % Colors.primaries.length][100];
+//
+//                   return Card(
+//                     color: color,
+//                     margin: const EdgeInsets.symmetric(vertical: 8.0),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10.0),
+//                     ),
+//                     child: ListTile(
+//                       leading: CircleAvatar(
+//                         backgroundColor: Colors.white,
+//                         child: const Icon(Icons.miscellaneous_services, color: Colors.black),
+//                       ),
+//                       title: Text(
+//                         service.intitule,
+//                         style: const TextStyle(
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       subtitle: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text("Description: ${service.description.isNotEmpty ? service.description : 'Aucune description'}"),
+//                           Text("Prix: ${service.prix} € | Temps: ${service.temps} min"),
+//                         ],
+//                       ),
+//                       trailing: Row(
+//                         mainAxisSize: MainAxisSize.min,
+//                         children: [
+//                           IconButton(
+//                             icon: const Icon(Icons.edit, color: Colors.blue),
+//                             onPressed: () {
+//                               Navigator.push(
+//                                 context,
+//                                 MaterialPageRoute(
+//                                   builder: (context) => EditServicePage(
+//                                     service: service,
+//                                     onServiceUpdated: _fetchServices,
+//                                   ),
+//                                 ),
+//                               );
+//                             },
+//                           ),
+//                           IconButton(
+//                             icon: const Icon(Icons.delete, color: Colors.red),
+//                             onPressed: () => _deleteService(service.id, index),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//       floatingActionButton: FloatingActionButton(
+//         onPressed: () {
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(
+//               builder: (context) => AddServicePage(coiffeuseId: widget.coiffeuseId, onServiceAdded: _fetchServices),
+//             ),
+//           );
+//         },
+//         backgroundColor: Colors.orange,
+//         child: const Icon(Icons.add, color: Colors.white),
+//       ),
+//     );
+//   }
+// }
 
 
 
@@ -803,135 +2366,143 @@ class _ServicesListPageState extends State<ServicesListPage> {
 //   }
 // }
 
-class AddServicePage extends StatefulWidget {
-  final String coiffeuseId;
-  final Function onServiceAdded; // Ajout d'un callback pour la mise à jour
-
-  const AddServicePage({Key? key, required this.coiffeuseId, required this.onServiceAdded}) : super(key: key);
-
-  @override
-  _AddServicePageState createState() => _AddServicePageState();
-}
-
-class _AddServicePageState extends State<AddServicePage> {
-  final TextEditingController _serviceController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _prixController = TextEditingController();
-  final TextEditingController _tempsController = TextEditingController();
-  bool _isLoading = false;
-
-  Future<void> _addService() async {
-    if (_serviceController.text.isEmpty ||
-        _prixController.text.isEmpty ||
-        _tempsController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Veuillez remplir tous les champs")),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final url = Uri.parse(
-        'http://192.168.0.248:8000/api/add_service_to_coiffeuse/${widget.coiffeuseId}/');
-
-    // ✅ Utilisation de la classe Service
-    Service newService = Service(
-      id: 0, // L'ID sera défini par la base de données
-      intitule: _serviceController.text,
-      description: _descriptionController.text,
-      prix: double.parse(_prixController.text),
-      temps: int.parse(_tempsController.text),
-    );
-
-    final body = json.encode(newService.toJson()); // ✅ Conversion en JSON
-
-    print("🚀 Envoi de la requête POST à : $url");
-    print("📩 Données envoyées : $body");
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      print("✅ Réponse reçue : ${response.statusCode}");
-      print("📩 Corps de la réponse : ${response.body}");
-
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("✅ Service ajouté avec succès !"),
-            backgroundColor: Colors.green, // ✅ MESSAGE EN VERT
-          ),
-        );
-
-        // ✅ Mettre à jour la liste avec le nouvel objet Service
-        widget.onServiceAdded();
-
-        // Fermer la page après succès
-        Navigator.pop(context);
-      } else {
-        final responseData = json.decode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Erreur: ${responseData['message']}"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Erreur de connexion : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Erreur de connexion au serveur."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Ajouter un service")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-                controller: _serviceController,
-                decoration: const InputDecoration(labelText: "Nom du service")),
-            TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: "Description")),
-            TextField(
-                controller: _prixController,
-                decoration: const InputDecoration(labelText: "Prix (€)"),
-                keyboardType: TextInputType.number),
-            TextField(
-                controller: _tempsController,
-                decoration: const InputDecoration(labelText: "Temps (min)"),
-                keyboardType: TextInputType.number),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                onPressed: _addService, child: const Text("Ajouter")),
-          ],
-        ),
-      ),
-    );
-  }
-}
+
+
+
+//------------------------------------------------------------------------------
+
+// class AddServicePage extends StatefulWidget {
+//   final String coiffeuseId;
+//   final Function onServiceAdded; // Ajout d'un callback pour la mise à jour
+//
+//   const AddServicePage({Key? key, required this.coiffeuseId, required this.onServiceAdded}) : super(key: key);
+//
+//   @override
+//   _AddServicePageState createState() => _AddServicePageState();
+// }
+//
+// class _AddServicePageState extends State<AddServicePage> {
+//   final TextEditingController _serviceController = TextEditingController();
+//   final TextEditingController _descriptionController = TextEditingController();
+//   final TextEditingController _prixController = TextEditingController();
+//   final TextEditingController _tempsController = TextEditingController();
+//   bool _isLoading = false;
+//
+//   Future<void> _addService() async {
+//     if (_serviceController.text.isEmpty ||
+//         _prixController.text.isEmpty ||
+//         _tempsController.text.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Veuillez remplir tous les champs")),
+//       );
+//       return;
+//     }
+//
+//     setState(() {
+//       _isLoading = true;
+//     });
+//
+//     final url = Uri.parse(
+//         'http://192.168.0.248:8000/api/add_service_to_coiffeuse/${widget.coiffeuseId}/');
+//
+//     // ✅ Utilisation de la classe Service
+//     Service newService = Service(
+//       id: 0, // L'ID sera défini par la base de données
+//       intitule: _serviceController.text,
+//       description: _descriptionController.text,
+//       prix: double.parse(_prixController.text),
+//       temps: int.parse(_tempsController.text), prixFinal: 0,
+//     );
+//
+//     final body = json.encode(newService.toJson()); // ✅ Conversion en JSON
+//
+//     print("🚀 Envoi de la requête POST à : $url");
+//     print("📩 Données envoyées : $body");
+//
+//     try {
+//       final response = await http.post(
+//         url,
+//         headers: {'Content-Type': 'application/json'},
+//         body: body,
+//       );
+//
+//       print("✅ Réponse reçue : ${response.statusCode}");
+//       print("📩 Corps de la réponse : ${response.body}");
+//
+//       if (response.statusCode == 201) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text("✅ Service ajouté avec succès !"),
+//             backgroundColor: Colors.green, // ✅ MESSAGE EN VERT
+//           ),
+//         );
+//
+//         // ✅ Mettre à jour la liste avec le nouvel objet Service
+//         widget.onServiceAdded();
+//
+//         // Fermer la page après succès
+//         Navigator.pop(context);
+//       } else {
+//         final responseData = json.decode(response.body);
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text("❌ Erreur: ${responseData['message']}"),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//       }
+//     } catch (e) {
+//       print("❌ Erreur de connexion : $e");
+//       ScaffoldMessenger.of(context)
+//       .showSnackBar(
+//         const SnackBar(
+//           content: Text("Erreur de connexion au serveur."),
+//           backgroundColor: Colors.red,
+//         ),
+//       );
+//     } finally {
+//       setState(() {
+//         _isLoading = false;
+//       });
+//     }
+//   }
+//
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text("Ajouter un service")),
+//       body: Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           children: [
+//             TextField(
+//                 controller: _serviceController,
+//                 decoration: const InputDecoration(labelText: "Nom du service")),
+//             TextField(
+//                 controller: _descriptionController,
+//                 decoration: const InputDecoration(labelText: "Description")),
+//             TextField(
+//                 controller: _prixController,
+//                 decoration: const InputDecoration(labelText: "Prix (€)"),
+//                 keyboardType: TextInputType.number),
+//             TextField(
+//                 controller: _tempsController,
+//                 decoration: const InputDecoration(labelText: "Temps (min)"),
+//                 keyboardType: TextInputType.number),
+//             const SizedBox(height: 20),
+//             _isLoading
+//                 ? const CircularProgressIndicator()
+//                 : ElevatedButton(
+//                 onPressed: _addService, child: const Text("Ajouter")),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 
 

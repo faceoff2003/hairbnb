@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hairbnb/pages/coiffeuses/coiffeuses_map_page.dart';
+import 'package:hairbnb/services/providers/current_user_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:hairbnb/models/current_user.dart';
+import '../pages/panier/cart_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
 import '../pages/profil/show_profile_page.dart';
-import '../services/providers/get_user_type_service.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -16,9 +18,13 @@ class BottomNavBar extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
+
   /// Gestion de la navigation en fonction de l'index
   Future<void> _handleTap(BuildContext context, int index) async {
-    if (index == 5) {
+
+    final CurrentUser? currentUser = Provider.of<CurrentUserProvider>(context, listen: false).currentUser;
+
+    if (index == 6) {
       // Déconnexion
       await LogoutService.confirmLogout(context);
     } else if (index == 1) {
@@ -32,24 +38,16 @@ class BottomNavBar extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const MessagesPage(clientId: 'clientId'),
+          builder: (context) => const MessagesPage(),
         ),
       );
     } else if (index == 4) {
       // Profil
-      final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-
-        // Récupérer les détails de l'utilisateur depuis le backend
-        final userDetails = await getIdAndTypeFromUuid(currentUser.uid);
-        final usertype = userDetails?['type'];
-
-        print('the usertype is :' + usertype);
-
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProfileScreen(userUuid: currentUser.uid,isCoiffeuse: usertype == 'coiffeuse'),
+            builder: (context) => ProfileScreen(currentUser: currentUser,),
           ),
         );
       } else {
@@ -60,7 +58,16 @@ class BottomNavBar extends StatelessWidget {
           ),
         );
       }
-    } else {
+    }else if (index == 5) {
+      // Messages
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CartPage(),
+        ),
+      );
+    }
+    else {
       // Navigation normale
       onTap(index);
     }
@@ -92,6 +99,10 @@ class BottomNavBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
           label: 'Profil',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart_checkout),
+          label: 'Panier',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.logout),

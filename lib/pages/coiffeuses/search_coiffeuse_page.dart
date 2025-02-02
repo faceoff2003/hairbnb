@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hairbnb/models/current_user.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -17,6 +18,7 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
   List<dynamic> coiffeuses = [];
   bool isLoading = false;
   bool hasError = false;
+  late CurrentUser currentUser;
 
   final String baseUrl = 'http://192.168.0.248:8000'; // Domaine de votre API
 
@@ -151,8 +153,8 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => ChatPage(
-                        clientId: "currentUserUuid",
-                        coiffeuseId: coiffeuse['uuid'], coiffeuseName: 'coiffeuseId',
+                        currentUser: currentUser,
+                        otherUserId: coiffeuse['uuid'],
                       ),
                     ),
                   );

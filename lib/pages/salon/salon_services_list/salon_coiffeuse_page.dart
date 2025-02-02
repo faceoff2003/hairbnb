@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hairbnb/models/Services.dart';
 import 'package:hairbnb/models/coiffeuse.dart';
+import 'package:hairbnb/pages/chat/chat_page.dart';
+import 'package:hairbnb/pages/salon/salon_services_list/show_services_list_page.dart';
+//import 'package:hairbnb/pages/salon/services_list_page.dart'; // ✅ Importation de ServicesListPage
+import 'package:hairbnb/services/providers/current_user_provider.dart';
+import 'package:hairbnb/widgets/Custom_app_bar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
 
 class SalonCoiffeusePage extends StatefulWidget {
   final Coiffeuse coiffeuse;
@@ -16,8 +22,8 @@ class SalonCoiffeusePage extends StatefulWidget {
 class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
   List<Service> services = [];
   bool isLoading = true;
-  bool isExpandedInfo = false; // État pour l'ExpansionTile des infos générales
-  bool isExpandedServices = false; // État pour l'ExpansionTile des services
+  bool isExpandedInfo = false;
+  bool isExpandedServices = false;
 
   @override
   void initState() {
@@ -52,20 +58,42 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
     }
   }
 
+  /// **📩 Ouvrir le chat avec la coiffeuse**
   void _contactCoiffeuse() {
-    // Remplacez cette méthode avec la logique pour contacter la coiffeuse
-    // Par exemple, ouvrir la page de chat avec cette coiffeuse
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Contacter ${widget.coiffeuse.nom} ${widget.coiffeuse.prenom}"),
-        backgroundColor: Colors.green,
+    final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+    final currentUser = currentUserProvider.currentUser;
+
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Erreur : Vous devez être connecté pour envoyer un message."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(
+          currentUser: currentUser,
+          otherUserId: widget.coiffeuse.uuid,
+        ),
       ),
     );
-    // Naviguer vers la page de chat :
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => ChatPage(coiffeuseId: widget.coiffeuse.id)),
-    // );
+  }
+
+  /// **🔍 Afficher la liste complète des services**
+  void _afficherServices() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ServicesListPage(
+          coiffeuseId: widget.coiffeuse.idTblUser.toString(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -80,18 +108,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Text(
-            "${widget.coiffeuse.nom} ${widget.coiffeuse.prenom} - Salon",
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Color(0xFFFF6F00),
-          elevation: 3,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
+        appBar: CustomAppBar(),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
@@ -126,52 +143,34 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
               ),
               const SizedBox(height: 20),
 
-              // 📋 Informations générales ExpansionTile
+              // 📋 Informations générales
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ExpansionTile(
-                  initiallyExpanded: isExpandedInfo,
-                  onExpansionChanged: (expanded) {
-                    setState(() {
-                      isExpandedInfo = expanded;
-                    });
-                  },
                   title: const Text(
                     "Informations générales",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
-                  leading: Icon(
-                    isExpandedInfo ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: Colors.orange,
-                  ),
                   children: [
                     ListTile(
-                      title: Text(
-                        "📞 Téléphone : ${widget.coiffeuse.numeroTelephone ?? 'Non renseigné'}",
-                        style: const TextStyle(fontSize: 16, color: Colors.black54),
-                      ),
+                      title: Text("📞 Téléphone : ${widget.coiffeuse.numeroTelephone ?? 'Non renseigné'}"),
                     ),
                     ListTile(
-                      title: Text(
-                        "📧 Email : ${widget.coiffeuse.email ?? 'Non renseigné'}",
-                        style: const TextStyle(fontSize: 16, color: Colors.black54),
-                      ),
+                      title: Text("📧 Email : ${widget.coiffeuse.email ?? 'Non renseigné'}"),
                     ),
                     ListTile(
-                      title: Text(
-                        "📍 Adresse : ${widget.coiffeuse.numero ?? ''} ${widget.coiffeuse.nomRue ?? ''}, ${widget.coiffeuse.commune ?? ''}, ${widget.coiffeuse.codePostal ?? ''}",
-                        style: const TextStyle(fontSize: 16, color: Colors.black54),
-                      ),
+                      title: Text("📍 Adresse : ${widget.coiffeuse.nomRue ?? ''}, ${widget.coiffeuse.commune ?? ''}"),
                     ),
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
 
-              // 💇‍♀️ Services sous forme de menu déroulant
+              // 💇‍♀️ Services ExpansionTile (ON GARDE CETTE PARTIE ✅)
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
@@ -188,10 +187,6 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
                     "Services proposés",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
-                  leading: Icon(
-                    isExpandedServices ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: Colors.orange,
-                  ),
                   children: services.isEmpty
                       ? [
                     const Padding(
@@ -203,46 +198,48 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
                     )
                   ]
                       : services.map((service) {
-                    return Card(
-                      color: Colors.orange.shade50,
-                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.cut, color: Colors.orange),
-                        title: Text(
-                          service.intitule,
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
-                        subtitle: Text(
-                          "💰 ${service.prix}€  ⏳ ${service.temps} min",
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                      ),
+
+                    return ListTile(
+                      leading: const Icon(Icons.cut, color: Colors.orange),
+                      title: Text(service.intitule),
+                      subtitle: Text("💰 ${service.prix}€  ⏳ ${service.temps} min"),
                     );
                   }).toList(),
                 ),
               ),
+
               const SizedBox(height: 20),
 
-              // Bouton "Contacter la coiffeuse"
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: _contactCoiffeuse,
-                  icon: const Icon(Icons.message, color: Colors.white),
-                  label: const Text(
-                    "Contacter la coiffeuse",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              // 🟠 **Boutons d'action : "Contacter" et "Afficher les services"**
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _contactCoiffeuse,
+                    icon: const Icon(Icons.message, color: Colors.white),
+                    label: const Text("Contacter"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: _afficherServices, // ✅ Nouveau bouton "Afficher les services"
+                    icon: const Icon(Icons.list, color: Colors.white),
+                    label: const Text("Afficher les services"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -252,6 +249,303 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/models/Services.dart';
+// import 'package:hairbnb/models/coiffeuse.dart';
+// import 'package:hairbnb/pages/chat/chat_page.dart';
+// import 'package:hairbnb/services/providers/current_user_provider.dart';
+// import 'package:hairbnb/widgets/Custom_app_bar.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+//
+// import 'package:provider/provider.dart';
+//
+// class SalonCoiffeusePage extends StatefulWidget {
+//   final Coiffeuse coiffeuse;
+//
+//   const SalonCoiffeusePage({Key? key, required this.coiffeuse}) : super(key: key);
+//
+//   @override
+//   _SalonCoiffeusePageState createState() => _SalonCoiffeusePageState();
+// }
+//
+// class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
+//   List<Service> services = [];
+//   bool isLoading = true;
+//   bool isExpandedInfo = false; // État pour l'ExpansionTile des infos générales
+//   bool isExpandedServices = false; // État pour l'ExpansionTile des services
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchServices();
+//   }
+//
+//   Future<void> _fetchServices() async {
+//     final String apiUrl =
+//         'http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuse.idTblUser}/';
+//
+//     try {
+//       final response = await http.get(Uri.parse(apiUrl));
+//       if (response.statusCode == 200) {
+//         final decodedBody = utf8.decode(response.bodyBytes);
+//         Map<String, dynamic> responseData = json.decode(decodedBody);
+//
+//         if (responseData['status'] == 'success' && responseData['salon'] != null) {
+//           List<dynamic> serviceList = responseData['salon']['services'] ?? [];
+//           setState(() {
+//             services = serviceList.map((serviceJson) => Service.fromJson(serviceJson)).toList();
+//             isLoading = false;
+//           });
+//         } else {
+//           setState(() => isLoading = false);
+//         }
+//       } else {
+//         setState(() => isLoading = false);
+//       }
+//     } catch (e) {
+//       setState(() => isLoading = false);
+//     }
+//   }
+//
+//   void _contactCoiffeuse() {
+//     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//     final currentUser = currentUserProvider.currentUser;
+//
+//     if (currentUser == null) {
+//       print("❌ Erreur : Aucun utilisateur connecté.");
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text("Erreur : Vous devez être connecté pour envoyer un message."),
+//           backgroundColor: Colors.red,
+//         ),
+//       );
+//       return;
+//     }
+//
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => ChatPage(
+//           currentUser: currentUser,
+//           otherUserId: widget.coiffeuse.uuid, // UUID de la coiffeuse
+//         ),
+//       ),
+//     );
+//   }
+//
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       decoration: BoxDecoration(
+//         gradient: LinearGradient(
+//           colors: [Colors.white, Colors.orange.shade50],
+//           begin: Alignment.topCenter,
+//           end: Alignment.bottomCenter,
+//         ),
+//       ),
+//       child: Scaffold(
+//         backgroundColor: Colors.transparent,
+//         appBar: CustomAppBar(
+//         ),
+//         body: isLoading
+//             ? const Center(child: CircularProgressIndicator())
+//             : SingleChildScrollView(
+//           padding: const EdgeInsets.all(16.0),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               // 📸 Photo de profil
+//               Center(
+//                 child: CircleAvatar(
+//                   radius: 60,
+//                   backgroundImage: widget.coiffeuse.photoProfil != null &&
+//                       widget.coiffeuse.photoProfil!.isNotEmpty
+//                       ? NetworkImage('http://192.168.0.248:8000${widget.coiffeuse.photoProfil}')
+//                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
+//                 ),
+//               ),
+//               const SizedBox(height: 10),
+//
+//               // 📌 Nom & Dénomination
+//               Center(
+//                 child: Text(
+//                   "${widget.coiffeuse.nom} ${widget.coiffeuse.prenom}",
+//                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+//                 ),
+//               ),
+//               Center(
+//                 child: Text(
+//                   widget.coiffeuse.denominationSociale ?? "Dénomination inconnue",
+//                   style: const TextStyle(fontSize: 18, color: Colors.grey),
+//                 ),
+//               ),
+//               const SizedBox(height: 20),
+//
+//               // 📋 Informations générales ExpansionTile
+//               Card(
+//                 elevation: 3,
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: ExpansionTile(
+//                   initiallyExpanded: isExpandedInfo,
+//                   onExpansionChanged: (expanded) {
+//                     setState(() {
+//                       isExpandedInfo = expanded;
+//                     });
+//                   },
+//                   title: const Text(
+//                     "Informations générales",
+//                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+//                   ),
+//                   leading: Icon(
+//                     isExpandedInfo ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+//                     color: Colors.orange,
+//                   ),
+//                   children: [
+//                     ListTile(
+//                       title: Text(
+//                         "📞 Téléphone : ${widget.coiffeuse.numeroTelephone ?? 'Non renseigné'}",
+//                         style: const TextStyle(fontSize: 16, color: Colors.black54),
+//                       ),
+//                     ),
+//                     ListTile(
+//                       title: Text(
+//                         "📧 Email : ${widget.coiffeuse.email ?? 'Non renseigné'}",
+//                         style: const TextStyle(fontSize: 16, color: Colors.black54),
+//                       ),
+//                     ),
+//                     ListTile(
+//                       title: Text(
+//                         "📍 Adresse : ${widget.coiffeuse.numero ?? ''} ${widget.coiffeuse.nomRue ?? ''}, ${widget.coiffeuse.commune ?? ''}, ${widget.coiffeuse.codePostal ?? ''}",
+//                         style: const TextStyle(fontSize: 16, color: Colors.black54),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//               const SizedBox(height: 20),
+//
+//               // 💇‍♀️ Services sous forme de menu déroulant
+//               Card(
+//                 elevation: 3,
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: ExpansionTile(
+//                   initiallyExpanded: isExpandedServices,
+//                   onExpansionChanged: (expanded) {
+//                     setState(() {
+//                       isExpandedServices = expanded;
+//                     });
+//                   },
+//                   title: const Text(
+//                     "Services proposés",
+//                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+//                   ),
+//                   leading: Icon(
+//                     isExpandedServices ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+//                     color: Colors.orange,
+//                   ),
+//                   children: services.isEmpty
+//                       ? [
+//                     const Padding(
+//                       padding: EdgeInsets.all(10.0),
+//                       child: Text(
+//                         "Aucun service disponible.",
+//                         style: TextStyle(color: Colors.black54),
+//                       ),
+//                     )
+//                   ]
+//                       : services.map((service) {
+//                     return Card(
+//                       color: Colors.orange.shade50,
+//                       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(10),
+//                       ),
+//                       child: ListTile(
+//                         leading: const Icon(Icons.cut, color: Colors.orange),
+//                         title: Text(
+//                           service.intitule,
+//                           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+//                         ),
+//                         subtitle: Text(
+//                           "💰 ${service.prix}€  ⏳ ${service.temps} min",
+//                           style: const TextStyle(color: Colors.black54),
+//                         ),
+//                       ),
+//                     );
+//                   }).toList(),
+//                 ),
+//               ),
+//               const SizedBox(height: 20),
+//
+//               // Bouton "Contacter la coiffeuse"
+//               Center(
+//                 child: ElevatedButton.icon(
+//                   onPressed: _contactCoiffeuse, // ✅ Appelle la nouvelle méthode ici
+//                   icon: const Icon(Icons.message, color: Colors.white),
+//                   label: const Text(
+//                     "Contacter la coiffeuse",
+//                     style: TextStyle(color: Colors.white),
+//                   ),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: Colors.orange,
+//                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(10),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+//
 
 
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/authentification/authentification_services/login_with_google.dart';
 import 'package:hairbnb/pages/authentification/signup_page.dart';
-
 import 'authentification_services/login_with_email.dart';
 import 'authentification_services/login_with_facebook.dart';
 

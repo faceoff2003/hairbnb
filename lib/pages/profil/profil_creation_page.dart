@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:http_parser/http_parser.dart';
-
+import '../authentification/login_page.dart';
 import '../salon/create_salon_page.dart';
 
 class ProfileCreationPage extends StatefulWidget {
@@ -97,7 +97,9 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveProfile,
+
               child: const Text("Enregistrer"),
+
             ),
           ],
         ),
@@ -342,6 +344,11 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
           ),
         );
       }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+            (Route<dynamic> route) => false, // Supprime toutes les pages précédentes
+      );
     } else {
       print("Aucune photo sélectionnée, envoi de l'avatar par défaut.");
     }

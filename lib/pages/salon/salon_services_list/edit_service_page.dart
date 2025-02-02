@@ -42,6 +42,7 @@ class _EditServicePageState extends State<EditServicePage> {
       description: _descriptionController.text,
       prix: double.parse(_prixController.text),
       temps: int.parse(_tempsController.text),
+      prixFinal: 0,
     );
 
     try {
