@@ -25,7 +25,8 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-    chatId = "currentUserUuid_${widget.coiffeuseId}";
+    chatId = "${widget.clientId}_${widget.coiffeuseId}";
+
   }
 
   void sendMessage(String text) async {
@@ -77,6 +78,11 @@ class _ChatPageState extends State<ChatPage> {
                     itemBuilder: (context, index) {
                       final msg = messages[index];
                       final isSender = msg['sender'] == widget.clientId;
+
+                      //---------------------------------------------------------------
+                      print('le client id est '+ widget.clientId);
+                      print('le coiffeuse id est '+ widget.coiffeuseId);
+                      //----------------------------------------------------------------
 
                       return Align(
                         alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
