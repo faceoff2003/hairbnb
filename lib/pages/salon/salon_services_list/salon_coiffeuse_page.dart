@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hairbnb/models/Services.dart';
 import 'package:hairbnb/models/coiffeuse.dart';
+import 'package:hairbnb/widgets/Custom_app_bar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -80,17 +81,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Text(
-            "${widget.coiffeuse.nom} ${widget.coiffeuse.prenom} - Salon",
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Color(0xFFFF6F00),
-          elevation: 3,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
+        appBar: CustomAppBar(
         ),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())

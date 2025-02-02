@@ -152,7 +152,7 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
                     MaterialPageRoute(
                       builder: (context) => ChatPage(
                         clientId: "currentUserUuid",
-                        coiffeuseId: coiffeuse['uuid'], coiffeuseName: 'coiffeuseId',
+                        otherUserId: coiffeuse['uuid'],
                       ),
                     ),
                   );

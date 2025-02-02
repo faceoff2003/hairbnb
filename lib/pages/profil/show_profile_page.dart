@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hairbnb/models/current_user.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -7,10 +8,10 @@ import '../../services/providers/get_user_type_service.dart';
 import '../salon/salon_services_list/show_services_list_page.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final String userUuid;
-  final bool isCoiffeuse;
+  final CurrentUser currentUser;
+  //final bool isCoiffeuse;
 
-  const ProfileScreen({Key? key, required this.userUuid, required this.isCoiffeuse}) : super(key: key);
+  const ProfileScreen({Key? key, required this.currentUser}) : super(key: key);
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -21,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoading = true;
   String errorMessage = "";
   String baseUrl = "";
+  //late CurrentUser currentUser;
 
   @override
   void initState() {
@@ -29,7 +31,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> fetchUserProfile() async {
-    baseUrl = 'http://192.168.0.248:8000/api/get_user_profile/${widget.userUuid}/';
+    //final currentUser = Provider.of<CurrentUserProvider>(context, listen: false);
+
+    baseUrl = 'http://192.168.0.248:8000/api/get_user_profile/${widget.currentUser.uuid}/';
 
     try {
       final response = await http.get(Uri.parse(baseUrl));
@@ -77,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () async {
                 Navigator.pop(context);
                 if (fieldController.text.isNotEmpty && fieldController.text != currentValue) {
-                  await updateUserProfile(widget.userUuid, {fieldName: fieldController.text});
+                  await updateUserProfile(widget.currentUser.uuid, {fieldName: fieldController.text});
                   fetchUserProfile();
                 }
               },
@@ -111,9 +115,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 CircleAvatar(
                   radius: 60,
-                  backgroundImage: userData!['photo_profil'] != null &&
-                      userData!['photo_profil'].isNotEmpty
-                      ? NetworkImage('http://192.168.0.248:8000${userData!['photo_profil']}')
+                  backgroundImage: widget.currentUser.photoProfil != null &&
+                      widget.currentUser.photoProfil!.isNotEmpty
+                      ? NetworkImage('http://192.168.0.248:8000${widget.currentUser.photoProfil}')
                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
                   onBackgroundImageError: (exception, stackTrace) {
                     print("Erreur de chargement de l'image : $exception");
@@ -123,7 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              "${capitalize(userData!['prenom'])} ${capitalize(userData!['nom'])}",
+              "${capitalize(widget.currentUser.prenom)} ${capitalize(widget.currentUser.nom)}",
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 5),
@@ -136,8 +140,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Informations générales
             const Text("Informations générales", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            _infoTile(Icons.email, "Email", userData!['email']),
-            _infoTile(Icons.phone, "Téléphone", userData!['numero_telephone']),
+            _infoTile(Icons.email, "Email", widget.currentUser.email),
+            _infoTile(Icons.phone, "Téléphone", widget.currentUser.numeroTelephone),
 
             // Adresse complète
             if (userData!['adresse'] != null) _infoTile(Icons.home, "Adresse", userData!['adresse']),
@@ -149,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 10),
 
             // Informations professionnelles (Coiffeuse uniquement)
-            if (widget.isCoiffeuse) ...[
+            if (widget.currentUser.type=='coiffeuse') ...[
               const Text("Informations professionnelles", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               _infoTile(Icons.business, "Dénomination Sociale", userData!['denomination_sociale']),
               _infoTile(Icons.money, "TVA", userData!['tva']),
@@ -160,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 10),
 
             // Bouton Services (pour coiffeuse uniquement)
-            if (widget.isCoiffeuse)
+            if (widget.currentUser.type=='coiffeuse')
               _actionTile(Icons.build, "Services", () async {
                 final userDetails = await getIdAndTypeFromUuid(userData?['uuid']);
                 if (userDetails != null) {

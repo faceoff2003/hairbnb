@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="hairbnb">
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<!--  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">-->
   <meta name="google-signin-client_id" content="523426514457-f6gveh52ou52p0glo5g0tjqs3hvegat2.apps.googleusercontent.com">
   <meta name="fb-app-id" content="618756030871872" />
 
@@ -41,24 +41,24 @@
           src="https://connect.facebook.net/en_US/sdk.js">
   </script>
 
-  <script>
-    window.fbAsyncInit = function() {
-      FB.init({
-        appId      : '618756030871872', // Remplace avec ton App ID Facebook
-        cookie     : true,
-        xfbml      : true,
-        version    : 'v16.0' // Vérifie que c'est la bonne version
-      });
-    };
+<!--  <script>-->
+<!--    window.fbAsyncInit = function() {-->
+<!--      FB.init({-->
+<!--        appId      : '618756030871872', // Remplace avec ton App ID Facebook-->
+<!--        cookie     : true,-->
+<!--        xfbml      : true,-->
+<!--        version    : 'v16.0' // Vérifie que c'est la bonne version-->
+<!--      });-->
+<!--    };-->
 
-    (function(d, s, id){
-       var js, fjs = d.getElementsByTagName(s)[0];
-       if (d.getElementById(id)) {return;}
-       js = d.createElement(s); js.id = id;
-       js.src = "https://connect.facebook.net/en_US/sdk.js";
-       fjs.parentNode.insertBefore(js, fjs);
-     }(document, 'script', 'facebook-jssdk'));
-  </script>
+<!--    (function(d, s, id){-->
+<!--       var js, fjs = d.getElementsByTagName(s)[0];-->
+<!--       if (d.getElementById(id)) {return;}-->
+<!--       js = d.createElement(s); js.id = id;-->
+<!--       js.src = "https://connect.facebook.net/en_US/sdk.js";-->
+<!--       fjs.parentNode.insertBefore(js, fjs);-->
+<!--     }(document, 'script', 'facebook-jssdk'));-->
+<!--  </script>-->
 
 
 </head>
