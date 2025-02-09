@@ -1,0 +1,6 @@
+sdk.dir=C:\\Users\\Admin\\AppData\\Local\\Android\\sdk
+flutter.sdk=C:\\src\\flutter
+flutter.buildMode=debug
+flutter.versionName=1.0.0
+flutter.versionCode=1
+MAPBOX_DOWNLOADS_TOKEN=sk.eyJ1IjoiZmFjZW9mZjIwMDMiLCJhIjoiY200cHEwOHFxMHBlbzJpczN0ZjRpeHpqOCJ9.z9_zCb2_W6tsBktKJMyWkQ

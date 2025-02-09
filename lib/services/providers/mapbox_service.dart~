@@ -1,0 +1,58 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:ui';
+
+class MapboxService {
+   final String accessToken = "pk.eyJ1IjoiZmFjZW9mZjIwMDMiLCJhIjoiY200bjdiZmlrMDQ2ZTJpczVsOG83b2NhOCJ9.huZ7C4_mmhYkyhtyonHF4Q";
+
+   /// Récupérer les coordonnées (latitude, longitude) d'une adresse
+   Future<Map<String, dynamic>> geocodeAddress(String address) async {
+     final String url =
+         "https://api.mapbox.com/geocoding/v5/mapbox.places/${Uri.encodeComponent(address)}.json?access_token=$accessToken";
+
+     final response = await http.get(Uri.parse(url));
+
+     if (response.statusCode == 200) {
+       final data = jsonDecode(response.body);
+       if (data['features'] != null && data['features'].isNotEmpty) {
+         final feature = data['features'][0];
+         final coordinates = feature['geometry']['coordinates'];
+         return {
+           'longitude': coordinates[0],
+           'latitude': coordinates[1],
+           'place_name': feature['place_name'],
+         };
+       } else {
+         throw Exception("Adresse introuvable");
+       }
+     } else {
+       throw Exception("Erreur lors de la requête à l'API Mapbox");
+     }
+   }
+
+//   /// Calculer les itinéraires entre deux points
+   Future<Map<String, dynamic>> getDirections(
+       double startLat, double startLng, double endLat, double endLng) async {
+     final String url =
+         "https://api.mapbox.com/directions/v5/mapbox/driving/$startLng,$startLat;$endLng,$endLat?access_token=$accessToken&geometries=geojson";
+
+     final response = await http.get(Uri.parse(url));
+
+     if (response.statusCode == 200) {
+       final data = jsonDecode(response.body);
+       if (data['routes'] != null && data['routes'].isNotEmpty) {
+         final route = data['routes'][0];
+         return {
+           'distance': route['distance'], // Distance en mètres
+           'duration': route['duration'], // Durée en secondes
+           'geometry': route['geometry'], // Coordonnées GeoJSON
+         };
+       } else {
+         throw Exception("Aucun itinéraire trouvé");
+       }
+     } else {
+       throw Exception("Erreur lors de la requête à l'API Mapbox");
+     }
+   }
+ }

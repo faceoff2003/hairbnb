@@ -139,6 +139,27 @@ class _ServicesListPageState extends State<ServicesListPage> {
     );
   }
 
+  void _showCreatePromotionModal(Service service) {
+    final serviceId=service.id;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Pour permettre à la modal de prendre plus d'espace si nécessaire
+      backgroundColor: Colors.transparent, // Pour que les coins arrondis du Container apparaissent
+      builder: (context) {
+        return Padding(
+          padding: MediaQuery.of(context).viewInsets, // Gérer le clavier
+          child: CreatePromotionModal(serviceId: serviceId),
+        );
+      },
+    ).then((value) {
+      if (value == true) {
+        _fetchServices();
+      }
+    });
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     bool isOwner = currentUserId != null && currentUserId == widget.coiffeuseId.toString();
@@ -206,9 +227,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(icon: const Icon(Icons.local_offer, color: Colors.purple), onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (context) => CreatePromotionPage(serviceId: service.id),
-                      )).then((_) => _fetchServices());
+                      _showCreatePromotionModal(service);
                     }),
                     IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () {
                       Navigator.push(context, MaterialPageRoute(
