@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hairbnb/models/current_user.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/promotion/create_promotion_page.dart';
 import 'package:hairbnb/services/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
@@ -56,7 +55,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
     });
 
     try {
-      final url = Uri.parse('http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuseId}/');
+      final url = Uri.parse('https://www.hairbnb.site/api/get_services_by_coiffeuse/${widget.coiffeuseId}/');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -107,7 +106,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
 
   /// **🗑️ Supprimer un service**
   Future<void> _deleteService(int serviceId) async {
-    final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+    final url = Uri.parse('https://www.hairbnb.site/api/delete_service/$serviceId/');
     try {
       final response = await http.delete(url);
       if (response.statusCode == 200) {

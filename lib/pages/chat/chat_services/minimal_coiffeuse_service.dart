@@ -3,7 +3,7 @@ import 'package:hairbnb/models/MinimalCoiffeuse.dart';
 import 'package:http/http.dart' as http;
 
 class CoiffeuseService {
-  static const String baseUrl = "http://192.168.0.248:8000";
+  static const String baseUrl = "https://www.hairbnb.site";
 
   static Future<List<MinimalCoiffeuse>> fetchCoiffeuses(List<String> uuids) async {
     final url = Uri.parse('$baseUrl/api/get_coiffeuses_info/');

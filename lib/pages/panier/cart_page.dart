@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../../services/providers/cart_provider.dart';
 import '../../models/Services.dart';
 import '../../services/providers/current_user_provider.dart';
+import 'confirm_rdv_page.dart';
 
 class CartPage extends StatefulWidget {
   @override
@@ -24,7 +25,8 @@ class _CartPageState extends State<CartPage> {
 
   /// **📌 Récupérer l'ID utilisateur**
   void _fetchCurrentUser() {
-    final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+    final currentUserProvider = Provider.of<CurrentUserProvider>(
+        context, listen: false);
     setState(() {
       currentUserId = currentUserProvider.currentUser?.idTblUser.toString();
     });
@@ -45,13 +47,15 @@ class _CartPageState extends State<CartPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.248:8000/api/get_cart/$currentUserId/'), // ✅ Ajout de user_id
+        Uri.parse(
+            'https://www.hairbnb.site/api/get_cart/$currentUserId/'), // ✅ Ajout de user_id
       );
 
       if (response.statusCode == 200) {
         final responseData = json.decode(utf8.decode(response.bodyBytes));
 
-        Provider.of<CartProvider>(context, listen: false).setCartFromApi(responseData);
+        Provider.of<CartProvider>(context, listen: false).setCartFromApi(
+            responseData);
       } else {
         throw Exception("Erreur lors du chargement du panier.");
       }
@@ -72,9 +76,13 @@ class _CartPageState extends State<CartPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.0.248:8000/api/add_to_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/add_to_cart/'),
         headers: {"Content-Type": "application/json"},
-        body: json.encode({"user_id": currentUserId, "service_id": service.id, "quantity": 1}),
+        body: json.encode({
+          "user_id": currentUserId,
+          "service_id": service.id,
+          "quantity": 1
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -92,10 +100,11 @@ class _CartPageState extends State<CartPage> {
     try {
       final request = http.Request(
         "DELETE",
-        Uri.parse('http://192.168.0.248:8000/api/remove_from_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/remove_from_cart/'),
       )
         ..headers["Content-Type"] = "application/json"
-        ..body = json.encode({"user_id": currentUserId, "service_id": service.id});
+        ..body = json.encode(
+            {"user_id": currentUserId, "service_id": service.id});
 
       final response = await http.Client().send(request);
 
@@ -114,7 +123,7 @@ class _CartPageState extends State<CartPage> {
     try {
       final request = http.Request(
         "DELETE",
-        Uri.parse('http://192.168.0.248:8000/api/clear_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/clear_cart/'),
       )
         ..headers["Content-Type"] = "application/json"
         ..body = json.encode({"user_id": currentUserId});
@@ -138,43 +147,75 @@ class _CartPageState extends State<CartPage> {
         title: const Text("🛒 Mon Panier"),
         backgroundColor: Colors.orange,
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : hasError
-          ? Center(
-        child: ElevatedButton(
-          onPressed: _fetchCart,
-          child: const Text("Réessayer"),
-        ),
-      )
-          : cartProvider.cartItems.isEmpty
+      body: cartProvider.cartItems.isEmpty
           ? const Center(child: Text("Votre panier est vide 😔"))
-          : ListView.builder(
-        itemCount: cartProvider.cartItems.length,
-        itemBuilder: (context, index) {
-          final service = cartProvider.cartItems[index];
+          : Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: cartProvider.cartItems.length,
+              itemBuilder: (context, index) {
+                final service = cartProvider.cartItems[index];
 
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-            child: ListTile(
-              leading: const Icon(Icons.miscellaneous_services, color: Colors.orange),
-              title: Text(service.intitule, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text("💰 ${service.prix} € | ⏳ ${service.temps} min"),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _removeFromCart(service),
-              ),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  child: ListTile(
+                    leading: const Icon(Icons.miscellaneous_services, color: Colors.orange),
+                    title: Text(service.intitule, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("⏳ ${service.temps} min"),
+                        if (service.promotion != null) ...[
+                          Text("💰 ${service.prix} €", style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.red)),
+                          Text("🔥 Promo: ${service.prixFinal} €", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+                        ] else ...[
+                          Text("💰 ${service.prixFinal} €"),
+                        ],
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        Provider.of<CartProvider>(context, listen: false).removeFromCart(service,currentUserId!);
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+
+          /// **🔥 Afficher le total prix et durée**
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Column(
+              children: [
+                Text(
+                  "💵 Total: ${cartProvider.totalPrice.toStringAsFixed(2)} €",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  "⏳ Temps estimé: ${cartProvider.totalDuration} min",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      bottomNavigationBar: cartProvider.cartItems.isEmpty
-          ? const SizedBox()
-          : Padding(
+
+      // ✅ Ajout du bouton de validation du panier
+      bottomNavigationBar: cartProvider.cartItems.isNotEmpty
+          ? Padding(
         padding: const EdgeInsets.all(10.0),
         child: ElevatedButton.icon(
           onPressed: () {
-            _clearCart(); // Vide le panier
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ConfirmRdvPage()),
+            );
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Commande validée 🎉")),
             );
@@ -186,10 +227,92 @@ class _CartPageState extends State<CartPage> {
             padding: const EdgeInsets.symmetric(vertical: 15),
           ),
         ),
-      ),
+      )
+          : const SizedBox(),
     );
   }
+
+  // @override
+  // Widget build(BuildContext context) {
+  //   final cartProvider = Provider.of<CartProvider>(context);
+  //
+  //   return Scaffold(
+  //     appBar: AppBar(
+  //       title: const Text("🛒 Mon Panier"),
+  //       backgroundColor: Colors.orange,
+  //     ),
+  //     body: cartProvider.cartItems.isEmpty
+  //         ? const Center(child: Text("Votre panier est vide 😔"))
+  //         : Column(
+  //       children: [
+  //         Expanded(
+  //           child: ListView.builder(
+  //             itemCount: cartProvider.cartItems.length,
+  //             itemBuilder: (context, index) {
+  //               final service = cartProvider.cartItems[index];
+  //
+  //               return Card(
+  //                 margin: const EdgeInsets.symmetric(
+  //                     vertical: 5, horizontal: 10),
+  //                 child: ListTile(
+  //                   leading: const Icon(Icons.miscellaneous_services, color: Colors.orange),
+  //                   title: Text(service.intitule, style: const TextStyle(fontWeight: FontWeight.bold)),
+  //                   subtitle: Column(
+  //                     crossAxisAlignment: CrossAxisAlignment.start,
+  //                     children: [
+  //                       Text("⏳ ${service.temps} min"),
+  //                       if (service.promotion != null) ...[
+  //                         Text("💰 ${service.prix} €", style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.red)), // Prix barré
+  //                         Text("🔥 Promo: ${service.prixFinal} €", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)), // Prix après réduction
+  //                       ] else ...[
+  //                         Text("💰 ${service.prixFinal} €"), // Affichage normal si pas de promo
+  //                       ],
+  //                     ],
+  //                   ),
+  //                   trailing: IconButton(
+  //                     icon: const Icon(Icons.delete, color: Colors.red),
+  //                     onPressed: () {
+  //                       Provider.of<CartProvider>(context, listen: false).removeFromCart(service, currentUserId!);
+  //                     },
+  //                   ),
+  //                 ),
+  //
+  //               );
+  //             },
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //
+  //     // ✅ Ajout du bouton de validation du panier
+  //     bottomNavigationBar: cartProvider.cartItems.isNotEmpty
+  //         ? Padding(
+  //       padding: const EdgeInsets.all(10.0),
+  //       child: ElevatedButton.icon(
+  //         onPressed: () {
+  //           Navigator.push(
+  //             context,
+  //             MaterialPageRoute(builder: (context) =>
+  //                 ConfirmRdvPage()), // 🟢 Naviguer vers la page de confirmation
+  //           );
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             const SnackBar(content: Text("Commande validée 🎉")),
+  //           );
+  //         },
+  //         icon: const Icon(Icons.check, color: Colors.white),
+  //         label: const Text("Valider la commande"),
+  //         style: ElevatedButton.styleFrom(
+  //           backgroundColor: Colors.green,
+  //           padding: const EdgeInsets.symmetric(vertical: 15),
+  //         ),
+  //       ),
+  //     )
+  //         : const SizedBox(), // ✅ Cacher si le panier est vide
+  //   );
+  // }
 }
+
+
 
 
 

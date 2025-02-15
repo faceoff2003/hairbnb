@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:http_parser/http_parser.dart';
-import '../authentification/login_page.dart';
+import 'package:provider/provider.dart';
+import '../../services/providers/current_user_provider.dart';
 import '../salon/create_salon_page.dart';
 
 class ProfileCreationPage extends StatefulWidget {
@@ -288,17 +289,127 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
 
   /// Méthode pour sauvegarder le profil
+//   void _saveProfile() async {
+//     if (!_isValidDate(birthDateController.text)) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text("Le format de la date de naissance doit être DD-MM-YYYY."),
+//         ),
+//       );
+//       return;
+//     }
+//
+//     final url = Uri.parse("https://www.hairbnb.site/api/create-profile/");
+//     var request = http.MultipartRequest('POST', url);
+//
+//     // Ajouter les champs de formulaire
+//     request.fields['userUuid'] = userUuid;
+//     request.fields['role'] = isCoiffeuse ? "coiffeuse" : "client";
+//     request.fields['nom'] = nameController.text;
+//     request.fields['prenom'] = surnameController.text;
+//     request.fields['sexe'] = selectedGender?.toLowerCase() ?? "autre";
+//     request.fields['code_postal'] = codePostalController.text;
+//     request.fields['commune'] = communeController.text;
+//     request.fields['rue'] = streetController.text;
+//     request.fields['numero'] = streetNumberController.text;
+//     request.fields['boite_postale'] = postalBoxController.text;
+//     request.fields['telephone'] = phoneController.text;
+//     request.fields['email'] = userEmail;
+//     request.fields['date_naissance'] = birthDateController.text;
+//
+//     if (isCoiffeuse) {
+//       request.fields['denomination_sociale'] = socialNameController.text;
+//       request.fields['tva'] = tvaController.text;
+//     }
+//
+//     // Ajouter le fichier si sélectionné
+//     if (profilePhoto != null || profilePhotoBytes != null) {
+//       debugPrint("Photo envoyée : ${profilePhoto?.path ?? 'bytes sélectionnés'}");
+//
+//       if (kIsWeb) {
+//         if (profilePhotoBytes != null) {
+//           request.files.add(
+//             http.MultipartFile.fromBytes(
+//               'photo_profil',
+//               profilePhotoBytes!,
+//               filename: 'profile_photo.png',
+//               contentType: MediaType('image', 'png'),
+//             ),
+//           );
+//         }
+//       } else if (profilePhoto != null) {
+//         request.files.add(
+//           await http.MultipartFile.fromPath(
+//             'photo_profil',
+//             profilePhoto!.path,
+//           ),
+//         );
+//       }
+//       Navigator.pushAndRemoveUntil(
+//         context,
+//         MaterialPageRoute(builder: (context) => const LoginPage()),
+//             (Route<dynamic> route) => false, // Supprime toutes les pages précédentes
+//       );
+//     } else {
+//       print("Aucune photo sélectionnée, envoi de l'avatar par défaut.");
+//     }
+// //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//     debugPrint("Données envoyées : ${request.fields}");
+//     if (profilePhoto != null || profilePhotoBytes != null) {
+//       debugPrint("Fichier attaché : ${profilePhoto?.path ?? 'Bytes sélectionnés'}");
+//     }
+// //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//     try {
+//       final response = await request.send();
+//       final responseBody = await response.stream.bytesToString();
+//
+//       if (response.statusCode == 201) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text("Profil créé avec succès!")),
+//         );
+//         if (isCoiffeuse) {
+//           // 🔴 🔴 Attendre que le profil soit bien créé et mis à jour dans le provider
+//           final userProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+//           await userProvider.fetchCurrentUser(); // Récupérer les infos mises à jour depuis Django
+//
+//           if (userProvider.currentUser != null) {
+//             // 🔥 Maintenant, on a l'utilisateur complet, on peut aller vers CreateSalonPage
+//             Navigator.push(
+//               context,
+//               MaterialPageRoute(builder: (context) => CreateSalonPage(currentUser: userProvider.currentUser!)),
+//             );
+//         } else {
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             const SnackBar(content: Text("Bienvenue! Votre profil a été créé.")),
+//           );
+//         }
+//       } else {
+//         debugPrint("Erreur backend : $responseBody");
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Erreur lors de la création du profil : $responseBody")),
+//         );
+//       }
+//         }
+//     } catch (e) {
+//       debugPrint("Erreur de connexion : $e");
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text("Erreur de connexion au serveur.")),
+//       );
+//     }
+//   }
+
   void _saveProfile() async {
     if (!_isValidDate(birthDateController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Le format de la date de naissance doit être DD-MM-YYYY."),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Le format de la date de naissance doit être DD-MM-YYYY.")),
+        );
+      }
       return;
     }
 
-    final url = Uri.parse("http://192.168.0.248:8000/api/create-profile/");
+    final url = Uri.parse("https://www.hairbnb.site/api/create-profile/");
     var request = http.MultipartRequest('POST', url);
 
     // Ajouter les champs de formulaire
@@ -323,19 +434,15 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
     // Ajouter le fichier si sélectionné
     if (profilePhoto != null || profilePhotoBytes != null) {
-      debugPrint("Photo envoyée : ${profilePhoto?.path ?? 'bytes sélectionnés'}");
-
-      if (kIsWeb) {
-        if (profilePhotoBytes != null) {
-          request.files.add(
-            http.MultipartFile.fromBytes(
-              'photo_profil',
-              profilePhotoBytes!,
-              filename: 'profile_photo.png',
-              contentType: MediaType('image', 'png'),
-            ),
-          );
-        }
+      if (kIsWeb && profilePhotoBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'photo_profil',
+            profilePhotoBytes!,
+            filename: 'profile_photo.png',
+            contentType: MediaType('image', 'png'),
+          ),
+        );
       } else if (profilePhoto != null) {
         request.files.add(
           await http.MultipartFile.fromPath(
@@ -344,51 +451,49 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
           ),
         );
       }
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-            (Route<dynamic> route) => false, // Supprime toutes les pages précédentes
-      );
-    } else {
-      print("Aucune photo sélectionnée, envoi de l'avatar par défaut.");
     }
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    debugPrint("Données envoyées : ${request.fields}");
-    if (profilePhoto != null || profilePhotoBytes != null) {
-      debugPrint("Fichier attaché : ${profilePhoto?.path ?? 'Bytes sélectionnés'}");
-    }
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     try {
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
+
+      if (!mounted) return; // 🔥 Vérifie si le widget est encore actif avant d'utiliser `context`
+
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Profil créé avec succès!")),
         );
+
         if (isCoiffeuse) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CreateSalonPage(userUuid: userUuid)),
-          );
+          final userProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+          await userProvider.fetchCurrentUser(); // 🔄 Mettre à jour le profil
+
+          if (mounted && userProvider.currentUser != null) {
+            // 🔥 Vérifie encore si le widget est monté avant de naviguer
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CreateSalonPage(currentUser: userProvider.currentUser!)),
+            );
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Bienvenue! Votre profil a été créé.")),
           );
         }
       } else {
-        debugPrint("Erreur backend : $responseBody");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Erreur lors de la création du profil : $responseBody")),
         );
       }
     } catch (e) {
-      debugPrint("Erreur de connexion : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erreur de connexion au serveur.")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Erreur de connexion au serveur.")),
+        );
+      }
     }
   }
+
 
 
   /// Validation du format de la date

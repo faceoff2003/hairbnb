@@ -7,7 +7,7 @@ import 'dart:convert';
 class CurrentUserProvider with ChangeNotifier {
   CurrentUser? _currentUser;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final String baseUrl = "http://192.168.0.248:8000";
+  final String baseUrl = "https://www.hairbnb.site";
 
   CurrentUser? get currentUser => _currentUser;
 

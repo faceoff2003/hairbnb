@@ -20,7 +20,7 @@ class MessagesPage extends StatefulWidget {
 
 class _MessagesPageState extends State<MessagesPage> {
   final databaseRef = FirebaseDatabase.instance.ref();
-  final String baseUrl = "http://192.168.0.248:8000";
+  final String baseUrl = "https://www.hairbnb.site";
 
   List<MinimalCoiffeuse> _cachedMinimalCoiffeuses = []; // Stocke les coiffeuses minimales
   List<Map<String, dynamic>> _conversations = []; // Stocke les conversations une seule fois

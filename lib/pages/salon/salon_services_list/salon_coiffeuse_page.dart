@@ -3,7 +3,6 @@ import 'package:hairbnb/models/Services.dart';
 import 'package:hairbnb/models/coiffeuse.dart';
 import 'package:hairbnb/pages/chat/chat_page.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/show_services_list_page.dart';
-//import 'package:hairbnb/pages/salon/services_list_page.dart'; // ✅ Importation de ServicesListPage
 import 'package:hairbnb/services/providers/current_user_provider.dart';
 import 'package:hairbnb/widgets/Custom_app_bar.dart';
 import 'package:http/http.dart' as http;
@@ -33,7 +32,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
 
   Future<void> _fetchServices() async {
     final String apiUrl =
-        'http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuse.idTblUser}/';
+        'https://www.hairbnb.site/api/get_services_by_coiffeuse/${widget.coiffeuse.idTblUser}/';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -122,7 +121,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
                   radius: 60,
                   backgroundImage: widget.coiffeuse.photoProfil != null &&
                       widget.coiffeuse.photoProfil!.isNotEmpty
-                      ? NetworkImage('http://192.168.0.248:8000${widget.coiffeuse.photoProfil}')
+                      ? NetworkImage('https://www.hairbnb.site${widget.coiffeuse.photoProfil}')
                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
                 ),
               ),

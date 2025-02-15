@@ -150,8 +150,8 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
                         CircleAvatar(
                           backgroundImage: coiffeuse['user']['photo_profil'] != null &&
                               coiffeuse['user']['photo_profil'].isNotEmpty
-                              ? NetworkImage('http://192.168.0.248:8000/${coiffeuse['user']['photo_profil']}')
-                              : const AssetImage('http://192.168.0.248:8000/'+"media/photos/defaults/avatar.png") as ImageProvider,
+                              ? NetworkImage('https://www.hairbnb.site${coiffeuse['user']['photo_profil']}')
+                              : const AssetImage('https://www.hairbnb.site/'+"media/photos/defaults/avatar.png") as ImageProvider,
                           onBackgroundImageError: (exception, stackTrace) {
                             print("❌ Erreur de chargement de l'image : $exception");
                           },

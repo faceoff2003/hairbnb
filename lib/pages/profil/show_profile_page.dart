@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> fetchUserProfile() async {
     //final currentUser = Provider.of<CurrentUserProvider>(context, listen: false);
 
-    baseUrl = 'http://192.168.0.248:8000/api/get_user_profile/${widget.currentUser.uuid}/';
+    baseUrl = 'https://www.hairbnb.site/api/get_user_profile/${widget.currentUser.uuid}/';
 
     try {
       final response = await http.get(Uri.parse(baseUrl));
@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   radius: 60,
                   backgroundImage: widget.currentUser.photoProfil != null &&
                       widget.currentUser.photoProfil!.isNotEmpty
-                      ? NetworkImage('http://192.168.0.248:8000${widget.currentUser.photoProfil}')
+                      ? NetworkImage('https://www.hairbnb.site${widget.currentUser.photoProfil}')
                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
                   onBackgroundImageError: (exception, stackTrace) {
                     print("Erreur de chargement de l'image : $exception");
@@ -212,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> updateUserProfile(String userUuid, Map<String, dynamic> updatedData) async {
-    final String apiUrl = 'http://192.168.0.248:8000/api/update_user_profile/$userUuid/';
+    final String apiUrl = 'https://www.hairbnb.site/api/update_user_profile/$userUuid/';
     try {
       final response = await http.patch(
         Uri.parse(apiUrl),
