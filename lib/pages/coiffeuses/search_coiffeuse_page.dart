@@ -20,7 +20,7 @@ class _SearchCoiffeusePageState extends State<SearchCoiffeusePage> {
   bool hasError = false;
   late CurrentUser currentUser;
 
-  final String baseUrl = 'http://192.168.0.248:8000'; // Domaine de votre API
+  final String baseUrl = 'https://www.hairbnb.site'; // Domaine de votre API
 
   @override
   void initState() {

@@ -33,7 +33,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
 
   Future<void> _fetchServices() async {
     final String apiUrl =
-        'http://192.168.0.248:8000/api/get_services_by_coiffeuse/${widget.coiffeuse.idTblUser}/';
+        'https://www.hairbnb.site/api/get_services_by_coiffeuse/${widget.coiffeuse.idTblUser}/';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -122,7 +122,7 @@ class _SalonCoiffeusePageState extends State<SalonCoiffeusePage> {
                   radius: 60,
                   backgroundImage: widget.coiffeuse.photoProfil != null &&
                       widget.coiffeuse.photoProfil!.isNotEmpty
-                      ? NetworkImage('http://192.168.0.248:8000${widget.coiffeuse.photoProfil}')
+                      ? NetworkImage('https://www.hairbnb.site${widget.coiffeuse.photoProfil}')
                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
                 ),
               ),

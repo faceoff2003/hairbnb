@@ -48,7 +48,7 @@ class _CreatePromotionModalState extends State<CreatePromotionModal> {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.0.248:8000/api/create_promotion/${widget.serviceId}/'),
+        Uri.parse('https://www.hairbnb.site/api/create_promotion/${widget.serviceId}/'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "discount_percentage": discount,

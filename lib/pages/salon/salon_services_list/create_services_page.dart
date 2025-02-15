@@ -31,7 +31,7 @@ class _ServicesListPageState extends State<ServicesListPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.248:8000/api/coiffeuse_services/${widget.coiffeuseId}/'),
+        Uri.parse('https://www.hairbnb.site/api/coiffeuse_services/${widget.coiffeuseId}/'),
       );
 
       if (response.statusCode == 200) {

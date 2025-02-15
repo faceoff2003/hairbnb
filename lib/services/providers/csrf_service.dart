@@ -4,7 +4,7 @@ class CSRFService {
   static String? csrfToken;
 
   static Future<void> fetchCSRFToken() async {
-    final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/services/'));
+    final response = await http.get(Uri.parse('https://www.hairbnb.site/api/services/'));
     if (response.headers.containsKey('set-cookie')) {
       final cookies = response.headers['set-cookie'];
       if (cookies != null) {

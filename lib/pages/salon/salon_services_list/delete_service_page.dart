@@ -11,7 +11,7 @@ void deleteService(
   // Supprimer instantanément l'élément de l'UI
   onInstantDelete();
 
-  final url = Uri.parse('http://192.168.0.248:8000/api/delete_service/$serviceId/');
+  final url = Uri.parse('https://www.hairbnb.site/api/delete_service/$serviceId/');
 
   try {
     final response = await http.delete(url);

@@ -6,7 +6,7 @@ import 'package:hairbnb/models/current_user.dart';
 // ✅ Cache pour éviter de recharger les mêmes utilisateurs
 Map<String, CurrentUser?> usersCache = {};
 
-final String baseUrl = "http://192.168.0.248:8000"; // ⚠️ Met à jour selon ton backend
+final String baseUrl = "https://www.hairbnb.site"; // ⚠️ Met à jour selon ton backend
 
 /// 🔄 Récupérer les informations d'un utilisateur via son UUID
 Future<CurrentUser?> fetchOtherUser(String otherUserId) async {

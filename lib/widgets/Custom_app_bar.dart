@@ -24,7 +24,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
-    final String baseUrl = "http://192.168.0.248:8000/";
+    final String baseUrl = "https://www.hairbnb.site/";
 
     return AppBar(
       title: Row(

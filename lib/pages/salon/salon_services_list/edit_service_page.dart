@@ -34,7 +34,7 @@ class _EditServicePageState extends State<EditServicePage> {
       _isLoading = true;
     });
 
-    final url = Uri.parse('http://192.168.0.248:8000/api/update_service/${widget.service.id}/');
+    final url = Uri.parse('https://www.hairbnb.site/api/update_service/${widget.service.id}/');
 
     Service updatedService = Service(
       id: widget.service.id,

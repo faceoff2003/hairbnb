@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../models/Services.dart';
 
 class ServiceAPI {
-  static const String baseUrl = "http://192.168.0.248:8000/api";
+  static const String baseUrl = "https://www.hairbnb.site/api";
 
   // Récupérer les services d'une coiffeuse
   static Future<List<Service>> fetchServices(String coiffeuseId) async {

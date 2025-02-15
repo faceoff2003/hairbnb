@@ -27,7 +27,7 @@ class _ChatPageState extends State<ChatPage> {
   final FocusNode _focusNode = FocusNode();
   late String chatId;
   CurrentUser? otherUser; // 🔥 Stocke les infos de l'autre utilisateur
-  late String baseUrl = "http://192.168.0.248:8000/";
+  late String baseUrl = "https://www.hairbnb.site/";
 
   @override
   void initState() {

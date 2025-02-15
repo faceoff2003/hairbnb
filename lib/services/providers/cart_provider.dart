@@ -12,7 +12,7 @@ class CartProvider extends ChangeNotifier {
   Future<void> fetchCartFromApi(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.248:8000/api/get_cart_by_user/$userId/'),
+        Uri.parse('https://www.hairbnb.site/api/get_cart_by_user/$userId/'),
       );
 
       if (response.statusCode == 200) {
@@ -36,7 +36,7 @@ class CartProvider extends ChangeNotifier {
 
   /// **➕ Ajouter un service au panier avec appel à l'API**
   Future<void> addToCart(Service service, String userId) async {
-    final url = Uri.parse('http://192.168.0.248:8000/api/add_to_cart/');
+    final url = Uri.parse('https://www.hairbnb.site/api/add_to_cart/');
 
     try {
       final response = await http.post(

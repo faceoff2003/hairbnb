@@ -7,12 +7,16 @@ import 'package:file_picker/file_picker.dart';
 import 'package:hairbnb/pages/salon/salon_services_list/add_service_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:provider/provider.dart';
+import '../../models/current_user.dart';
+import '../../services/providers/current_user_provider.dart';
 import '../../services/providers/get_user_type_service.dart';
 
 class CreateSalonPage extends StatefulWidget {
-  final String userUuid;
+  //final String userUuid;
+  final CurrentUser currentUser;
 
-  const CreateSalonPage({required this.userUuid, Key? key}) : super(key: key);
+  const CreateSalonPage({required this.currentUser, Key? key}) : super(key: key);
 
   @override
   State<CreateSalonPage> createState() => _CreateSalonPageState();
@@ -135,6 +139,8 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
 
   /// Méthode pour sauvegarder le salon
   Future<void> _saveSalon() async {
+    final utilisateurActuelle = Provider.of<CurrentUserProvider>(context, listen: false).currentUser;
+
     if (sloganController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Le slogan est obligatoire.")),
@@ -153,11 +159,11 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
       isLoading = true;
     });
 
-    final url = Uri.parse("http://192.168.0.248:8000/api/create_salon/");
+    final url = Uri.parse("https://www.hairbnb.site/api/create_salon/");
     final request = http.MultipartRequest('POST', url);
 
     // Ajouter les champs de formulaire
-    request.fields['userUuid'] = widget.userUuid;
+    request.fields['userUuid'] = widget.currentUser.uuid;
     request.fields['slogan'] = sloganController.text;
 
     // Ajouter le logo si présent
@@ -197,7 +203,7 @@ class _CreateSalonPageState extends State<CreateSalonPage> {
           );
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddServicePage(coiffeuseId: ''),
+            MaterialPageRoute(builder: (_) => AddServicePage(coiffeuseId: utilisateurActuelle!.idTblUser.toString()),
           )
           );
         } else {

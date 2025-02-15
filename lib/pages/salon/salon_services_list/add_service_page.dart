@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -33,7 +34,7 @@ class _AddServicePageState extends State<AddServicePage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.0.248:8000/api/add_service_to_salon/'),
+        Uri.parse('https://www.hairbnb.site/api/add_service_to_salon/'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'userId': widget.coiffeuseId,
@@ -75,6 +76,11 @@ class _AddServicePageState extends State<AddServicePage> {
 
   @override
   Widget build(BuildContext context) {
+    //------------------------------------------------------------------------------------------------------------------------------------
+    if (kDebugMode) {
+      print('${nameController.text}--${descriptionController.text}--${priceController.text}--${durationController.text}');
+    }
+    //-------------------------------------------------------------------------------------------------------------------------------------
     return Scaffold(
       appBar: AppBar(
         title: const Text("Ajouter un service"),

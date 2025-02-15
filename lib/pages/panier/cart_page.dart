@@ -45,7 +45,7 @@ class _CartPageState extends State<CartPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.0.248:8000/api/get_cart/$currentUserId/'), // ✅ Ajout de user_id
+        Uri.parse('https://www.hairbnb.site/api/get_cart/$currentUserId/'), // ✅ Ajout de user_id
       );
 
       if (response.statusCode == 200) {
@@ -72,7 +72,7 @@ class _CartPageState extends State<CartPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.0.248:8000/api/add_to_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/add_to_cart/'),
         headers: {"Content-Type": "application/json"},
         body: json.encode({"user_id": currentUserId, "service_id": service.id, "quantity": 1}),
       );
@@ -92,7 +92,7 @@ class _CartPageState extends State<CartPage> {
     try {
       final request = http.Request(
         "DELETE",
-        Uri.parse('http://192.168.0.248:8000/api/remove_from_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/remove_from_cart/'),
       )
         ..headers["Content-Type"] = "application/json"
         ..body = json.encode({"user_id": currentUserId, "service_id": service.id});
@@ -114,7 +114,7 @@ class _CartPageState extends State<CartPage> {
     try {
       final request = http.Request(
         "DELETE",
-        Uri.parse('http://192.168.0.248:8000/api/clear_cart/'),
+        Uri.parse('https://www.hairbnb.site/api/clear_cart/'),
       )
         ..headers["Content-Type"] = "application/json"
         ..body = json.encode({"user_id": currentUserId});
