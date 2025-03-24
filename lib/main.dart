@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hairbnb/services/providers/cart_provider.dart';
+import 'package:hairbnb/services/providers/disponibilites_provider.dart';
 import 'firebase_options.dart';
 import 'package:hairbnb/pages/splash_screen.dart';
 import 'package:provider/provider.dart';
@@ -44,7 +45,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CurrentUserProvider()), // 🔥 Initialisation de `UserProvider
-        ChangeNotifierProvider(create: (context) => CartProvider()),// `
+        ChangeNotifierProvider(create: (context) => CartProvider()),//
+        ChangeNotifierProvider(create: (_) => DisponibilitesProvider()), // ✅ ici// `
       ],
       child: const MyApp(),
     ),

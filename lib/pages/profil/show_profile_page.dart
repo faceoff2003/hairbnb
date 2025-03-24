@@ -1,15 +1,19 @@
-import 'package:flutter/material.dart';
-import 'package:hairbnb/models/current_user.dart';
-import 'package:http/http.dart' as http;
+
+
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../services/providers/get_user_type_service.dart';
-import '../salon/salon_services_list/show_services_list_page.dart';
+import '../../widgets/bottom_nav_bar.dart';
+import '../salon/salon_services_list/create_services_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   final CurrentUser currentUser;
-  //final bool isCoiffeuse;
 
   const ProfileScreen({Key? key, required this.currentUser}) : super(key: key);
 
@@ -22,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoading = true;
   String errorMessage = "";
   String baseUrl = "";
-  //late CurrentUser currentUser;
 
   @override
   void initState() {
@@ -31,8 +34,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> fetchUserProfile() async {
-    //final currentUser = Provider.of<CurrentUserProvider>(context, listen: false);
-
     baseUrl = 'https://www.hairbnb.site/api/get_user_profile/${widget.currentUser.uuid}/';
 
     try {
@@ -73,10 +74,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: InputDecoration(hintText: "Nouvelle valeur pour $fieldName"),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Annuler"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Annuler")),
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
@@ -110,7 +108,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // -- Image de profil
             Stack(
               children: [
                 CircleAvatar(
@@ -133,17 +130,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 5),
             Text("Type : ${userData!['type']}", style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 20),
-
             const Divider(),
             const SizedBox(height: 10),
 
-            // Informations générales
             const Text("Informations générales", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             _infoTile(Icons.email, "Email", widget.currentUser.email),
             _infoTile(Icons.phone, "Téléphone", widget.currentUser.numeroTelephone),
 
-            // Adresse complète
             if (userData!['adresse'] != null) _infoTile(Icons.home, "Adresse", userData!['adresse']),
             if (userData!['rue'] != null) _infoTile(Icons.location_on, "Rue", userData!['rue']),
             if (userData!['commune'] != null) _infoTile(Icons.location_city, "Commune", userData!['commune']),
@@ -152,8 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Divider(),
             const SizedBox(height: 10),
 
-            // Informations professionnelles (Coiffeuse uniquement)
-            if (widget.currentUser.type=='coiffeuse') ...[
+            if (widget.currentUser.type == 'coiffeuse') ...[
               const Text("Informations professionnelles", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               _infoTile(Icons.business, "Dénomination Sociale", userData!['denomination_sociale']),
               _infoTile(Icons.money, "TVA", userData!['tva']),
@@ -163,8 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Divider(),
             const SizedBox(height: 10),
 
-            // Bouton Services (pour coiffeuse uniquement)
-            if (widget.currentUser.type=='coiffeuse')
+            if (widget.currentUser.type == 'coiffeuse')
               _actionTile(Icons.build, "Services", () async {
                 final userDetails = await getIdAndTypeFromUuid(userData?['uuid']);
                 if (userDetails != null) {
@@ -188,6 +180,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: 4, // 🟣 Correspond à l’onglet "Profil"
+        onTap: (index) {
+          // L’action est gérée dans le widget de la navbar lui-même
+        },
       ),
     );
   }
@@ -230,6 +228,249 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/models/current_user.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
+//
+// import '../../services/auth_services/logout_service.dart';
+// import '../../services/providers/get_user_type_service.dart';
+// import '../salon/salon_services_list/show_services_list_page.dart';
+//
+// class ProfileScreen extends StatefulWidget {
+//   final CurrentUser currentUser;
+//   //final bool isCoiffeuse;
+//
+//   const ProfileScreen({Key? key, required this.currentUser}) : super(key: key);
+//
+//   @override
+//   State<ProfileScreen> createState() => _ProfileScreenState();
+// }
+//
+// class _ProfileScreenState extends State<ProfileScreen> {
+//   Map<String, dynamic>? userData;
+//   bool isLoading = true;
+//   String errorMessage = "";
+//   String baseUrl = "";
+//   //late CurrentUser currentUser;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     fetchUserProfile();
+//   }
+//
+//   Future<void> fetchUserProfile() async {
+//     //final currentUser = Provider.of<CurrentUserProvider>(context, listen: false);
+//
+//     baseUrl = 'https://www.hairbnb.site/api/get_user_profile/${widget.currentUser.uuid}/';
+//
+//     try {
+//       final response = await http.get(Uri.parse(baseUrl));
+//
+//       if (response.statusCode == 200) {
+//         final data = json.decode(response.body);
+//         setState(() {
+//           userData = data['data'];
+//           isLoading = false;
+//         });
+//       } else {
+//         setState(() {
+//           errorMessage = "Erreur : ${response.statusCode} ${response.reasonPhrase}";
+//           isLoading = false;
+//         });
+//       }
+//     } catch (e) {
+//       setState(() {
+//         errorMessage = "Erreur réseau : $e";
+//         isLoading = false;
+//       });
+//     }
+//   }
+//
+//   String capitalize(String s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1).toLowerCase() : "";
+//
+//   void _editField(String fieldName, String currentValue) {
+//     final TextEditingController fieldController = TextEditingController(text: currentValue);
+//
+//     showDialog(
+//       context: context,
+//       builder: (context) {
+//         return AlertDialog(
+//           title: Text("Modifier $fieldName"),
+//           content: TextField(
+//             controller: fieldController,
+//             decoration: InputDecoration(hintText: "Nouvelle valeur pour $fieldName"),
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () => Navigator.pop(context),
+//               child: const Text("Annuler"),
+//             ),
+//             TextButton(
+//               onPressed: () async {
+//                 Navigator.pop(context);
+//                 if (fieldController.text.isNotEmpty && fieldController.text != currentValue) {
+//                   await updateUserProfile(widget.currentUser.uuid, {fieldName: fieldController.text});
+//                   fetchUserProfile();
+//                 }
+//               },
+//               child: const Text("Sauvegarder"),
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         leading: IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back)),
+//         title: const Text("Profil", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//       ),
+//       body: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : errorMessage.isNotEmpty
+//           ? Center(child: Text(errorMessage, style: const TextStyle(color: Colors.red, fontSize: 16)))
+//           : userData == null
+//           ? const Center(child: Text("Aucune donnée à afficher."))
+//           : SingleChildScrollView(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           children: [
+//             // -- Image de profil
+//             Stack(
+//               children: [
+//                 CircleAvatar(
+//                   radius: 60,
+//                   backgroundImage: widget.currentUser.photoProfil != null &&
+//                       widget.currentUser.photoProfil!.isNotEmpty
+//                       ? NetworkImage('https://www.hairbnb.site${widget.currentUser.photoProfil}')
+//                       : const AssetImage('assets/default_avatar.png') as ImageProvider,
+//                   onBackgroundImageError: (exception, stackTrace) {
+//                     print("Erreur de chargement de l'image : $exception");
+//                   },
+//                 ),
+//               ],
+//             ),
+//             const SizedBox(height: 10),
+//             Text(
+//               "${capitalize(widget.currentUser.prenom)} ${capitalize(widget.currentUser.nom)}",
+//               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+//             ),
+//             const SizedBox(height: 5),
+//             Text("Type : ${userData!['type']}", style: const TextStyle(fontSize: 16)),
+//             const SizedBox(height: 20),
+//
+//             const Divider(),
+//             const SizedBox(height: 10),
+//
+//             // Informations générales
+//             const Text("Informations générales", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//             const SizedBox(height: 10),
+//             _infoTile(Icons.email, "Email", widget.currentUser.email),
+//             _infoTile(Icons.phone, "Téléphone", widget.currentUser.numeroTelephone),
+//
+//             // Adresse complète
+//             if (userData!['adresse'] != null) _infoTile(Icons.home, "Adresse", userData!['adresse']),
+//             if (userData!['rue'] != null) _infoTile(Icons.location_on, "Rue", userData!['rue']),
+//             if (userData!['commune'] != null) _infoTile(Icons.location_city, "Commune", userData!['commune']),
+//             if (userData!['code_postal'] != null) _infoTile(Icons.local_post_office, "Code postal", userData!['code_postal']),
+//
+//             const Divider(),
+//             const SizedBox(height: 10),
+//
+//             // Informations professionnelles (Coiffeuse uniquement)
+//             if (widget.currentUser.type=='coiffeuse') ...[
+//               const Text("Informations professionnelles", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+//               _infoTile(Icons.business, "Dénomination Sociale", userData!['denomination_sociale']),
+//               _infoTile(Icons.money, "TVA", userData!['tva']),
+//               _infoTile(Icons.map, "Position", userData!['position']),
+//             ],
+//
+//             const Divider(),
+//             const SizedBox(height: 10),
+//
+//             // Bouton Services (pour coiffeuse uniquement)
+//             if (widget.currentUser.type=='coiffeuse')
+//               _actionTile(Icons.build, "Services", () async {
+//                 final userDetails = await getIdAndTypeFromUuid(userData?['uuid']);
+//                 if (userDetails != null) {
+//                   final idTblUser = userDetails['idTblUser'];
+//                   Navigator.push(
+//                     context,
+//                     MaterialPageRoute(
+//                       builder: (context) => ServicesListPage(coiffeuseId: idTblUser.toString()),
+//                     ),
+//                   );
+//                 } else {
+//                   ScaffoldMessenger.of(context).showSnackBar(
+//                     const SnackBar(content: Text("Erreur lors de la récupération des services.")),
+//                   );
+//                 }
+//               }),
+//
+//             _actionTile(Icons.settings, "Paramètres", () {}),
+//             _actionTile(Icons.logout, "Déconnexion", () async {
+//               await LogoutService.confirmLogout(context);
+//             }),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Widget _infoTile(IconData icon, String label, dynamic value) {
+//     return ListTile(
+//       leading: Icon(icon),
+//       title: Text(value != null && value.toString().isNotEmpty ? value.toString() : "Non spécifié"),
+//       trailing: IconButton(
+//         icon: const Icon(Icons.edit),
+//         onPressed: () => _editField(label, value ?? ""),
+//       ),
+//     );
+//   }
+//
+//   Widget _actionTile(IconData icon, String label, VoidCallback onTap) {
+//     return ListTile(
+//       leading: Icon(icon),
+//       title: Text(label),
+//       onTap: onTap,
+//     );
+//   }
+//
+//   Future<void> updateUserProfile(String userUuid, Map<String, dynamic> updatedData) async {
+//     final String apiUrl = 'https://www.hairbnb.site/api/update_user_profile/$userUuid/';
+//     try {
+//       final response = await http.patch(
+//         Uri.parse(apiUrl),
+//         headers: {'Content-Type': 'application/json'},
+//         body: jsonEncode(updatedData),
+//       );
+//
+//       if (response.statusCode == 200) {
+//         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profil mis à jour avec succès"), backgroundColor: Colors.green));
+//       } else {
+//         throw Exception("Erreur serveur : ${response.statusCode}");
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur réseau : $e"), backgroundColor: Colors.red));
+//     }
+//   }
+// }
 
 
 

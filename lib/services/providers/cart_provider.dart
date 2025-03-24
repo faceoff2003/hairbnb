@@ -38,6 +38,43 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> envoyerReservation({
+    required String userId,
+    required DateTime dateHeure,
+    required String methodePaiement,
+  }) async {
+    if (coiffeuseId == null || cartItems.isEmpty) return false;
+
+    final url = Uri.parse('https://www.hairbnb.site/api/create_rendez_vous/');
+    final body = json.encode({
+      "user_id": userId,
+      "coiffeuse_id": coiffeuseId,
+      "date_heure": dateHeure.toIso8601String(),
+      "services": cartItems.map((s) => s.id).toList(),
+      "methode_paiement": methodePaiement,
+      "total_price": totalPrice,
+      "total_duration": totalDuration,
+    });
+
+    try {
+      final response = await http.post(url, headers: {
+        "Content-Type": "application/json",
+      }, body: body);
+
+      if (response.statusCode == 201) {
+        clearCart(); // 🧹 vider le panier après succès
+        return true;
+      } else {
+        print("❌ Erreur serveur : ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("🚨 Erreur réseau : $e");
+      return false;
+    }
+  }
+
+
   /// **➕ Ajouter un service au panier**
   Future<void> addToCart(Service service, String userId) async {
     final url = Uri.parse('https://www.hairbnb.site/api/add_to_cart/');

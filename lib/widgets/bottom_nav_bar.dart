@@ -3,6 +3,7 @@ import 'package:hairbnb/pages/coiffeuses/coiffeuses_map_page.dart';
 import 'package:hairbnb/services/providers/current_user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:hairbnb/models/current_user.dart';
+import '../pages/horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
 import '../pages/panier/cart_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
@@ -33,6 +34,12 @@ class BottomNavBar extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (context) => CoiffeusesListPage()),
       );
+    }else if (index == 2) {
+      // Rechercher
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => HoraireIndispoPage(coiffeuseId: currentUser!.idTblUser,)),
+      );
     } else if (index == 3) {
       // Messages
       Navigator.push(
@@ -58,15 +65,16 @@ class BottomNavBar extends StatelessWidget {
           ),
         );
       }
-    }else if (index == 5) {
-      // Messages
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CartPage(),
-        ),
-      );
     }
+    //else if (index == 5) {
+    //   // Messages
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder: (context) => CartPage(),
+    //     ),
+    //   );
+    // }
     else {
       // Navigation normale
       onTap(index);
@@ -100,10 +108,10 @@ class BottomNavBar extends StatelessWidget {
           icon: Icon(Icons.person),
           label: 'Profil',
         ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.shopping_cart_checkout),
-          label: 'Panier',
-        ),
+        // BottomNavigationBarItem(
+        //   icon: Icon(Icons.shopping_cart_checkout),
+        //   label: 'Panier',
+        // ),
         BottomNavigationBarItem(
           icon: Icon(Icons.logout),
           label: 'Déconnexion',
