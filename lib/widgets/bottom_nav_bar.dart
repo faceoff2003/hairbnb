@@ -4,7 +4,6 @@ import 'package:hairbnb/services/providers/current_user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:hairbnb/models/current_user.dart';
 import '../pages/horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
-import '../pages/panier/cart_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
 import '../pages/profil/show_profile_page.dart';
