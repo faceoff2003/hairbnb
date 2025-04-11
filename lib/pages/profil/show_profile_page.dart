@@ -1,15 +1,12 @@
-
-
 import 'dart:convert';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../services/providers/get_user_type_service.dart';
 import '../../widgets/bottom_nav_bar.dart';
+import '../horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
 import '../salon/salon_services_list/create_services_page.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -173,8 +170,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 }
               }),
+            if (widget.currentUser.type == 'coiffeuse')
+            _actionTile(Icons.calendar_today, "Mes disponibilités", () async {
+              final userDetails = await getIdAndTypeFromUuid(widget.currentUser.uuid);
+              if (userDetails != null) {
+                final coiffeuseId = userDetails['idTblUser'];
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HoraireIndispoPage(coiffeuseId: coiffeuseId),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Impossible de charger vos horaires.")),
+                );
+              }
+            }),
 
-            _actionTile(Icons.settings, "Paramètres", () {}),
             _actionTile(Icons.logout, "Déconnexion", () async {
               await LogoutService.confirmLogout(context);
             }),

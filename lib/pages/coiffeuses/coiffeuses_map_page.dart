@@ -1,11 +1,15 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hairbnb/pages/coiffeuses/services/city_autocomplete.dart';
+import 'package:hairbnb/pages/coiffeuses/services/geocoding_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:hairbnb/pages/coiffeuses/services/api_location_service.dart';
+import 'package:hairbnb/pages/coiffeuses/services/location_service.dart';
 import 'package:hairbnb/models/current_user.dart';
-import 'package:hairbnb/services/providers/api_location_service.dart';
 import 'package:hairbnb/services/providers/current_user_provider.dart';
-import 'package:hairbnb/services/providers/location_service.dart';
 import 'package:hairbnb/widgets/Custom_app_bar.dart';
 import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 import '../salon/salon_services_list/salon_coiffeuse_page.dart';
@@ -20,9 +24,23 @@ class CoiffeusesListPage extends StatefulWidget {
 class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
   List<dynamic> coiffeuses = [];
   Position? _currentPosition;
-  double _searchRadius = 10.0;
+  Position? _gpsPosition;
+  double _gpsRadius = 10.0;
+  final TextEditingController cityController = TextEditingController();
+  final TextEditingController distanceController = TextEditingController();
+  bool isTileExpanded = false;
   late CurrentUser? currentUser;
   int _currentIndex = 1;
+  String? activeSearchLabel;
+
+  int _itemsPerPage = 10;
+  int _currentPage = 1;
+
+  List<dynamic> get _paginatedCoiffeuses {
+    final start = (_currentPage - 1) * _itemsPerPage;
+    final end = _currentPage * _itemsPerPage;
+    return coiffeuses.sublist(start, end > coiffeuses.length ? coiffeuses.length : end);
+  }
 
   @override
   void initState() {
@@ -32,67 +50,94 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
 
   Future<void> _loadUserLocation() async {
     try {
-      Position? position = await LocationService.getUserLocation();
+      final position = await LocationService.getUserLocation();
       if (position != null) {
         setState(() {
+          _gpsPosition = position;
           _currentPosition = position;
+          activeSearchLabel = "📍 Autour de ma position actuelle (${_gpsRadius.toInt()} km)";
         });
-        _fetchCoiffeuses();
+        await _fetchCoiffeuses(position, _gpsRadius);
       }
     } catch (e) {
-      print("❌ Erreur de récupération de la position : $e");
+      print("❌ Erreur de localisation : $e");
     }
   }
 
-  Future<void> _fetchCoiffeuses() async {
-    if (_currentPosition == null) return;
-
+  Future<void> _fetchCoiffeuses(Position position, double radius) async {
     try {
-      List<dynamic> nearbyCoiffeuses = await ApiService.fetchNearbyCoiffeuses(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-        _searchRadius,
+      final nearbyCoiffeuses = await ApiService.fetchNearbyCoiffeuses(
+        position.latitude,
+        position.longitude,
+        radius,
       );
 
       currentUser = Provider.of<CurrentUserProvider>(context, listen: false).currentUser;
 
-      nearbyCoiffeuses = nearbyCoiffeuses.where((coiffeuse) {
-        return coiffeuse['user']['uuid'] != currentUser!.uuid;
+      final filtered = nearbyCoiffeuses.where((c) {
+        return c['user']['uuid'] != currentUser?.uuid;
       }).toList();
 
       setState(() {
-        coiffeuses = nearbyCoiffeuses;
+        coiffeuses = filtered;
+        _currentPage = 1;
       });
     } catch (e) {
-      print("❌ Erreur lors de la récupération des coiffeuses : $e");
+      print("❌ Erreur API : $e");
+    }
+  }
+
+  Future<void> _searchByCity() async {
+    final city = cityController.text.trim();
+    final distanceText = distanceController.text.trim();
+
+    if (city.isEmpty || distanceText.isEmpty) return;
+
+    final parsedDistance = double.tryParse(distanceText);
+    if (parsedDistance == null || parsedDistance > 150) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Distance invalide. Maximum 150 km.")),
+      );
+      return;
+    }
+
+    final position = await GeocodingService.getCoordinatesFromCity(city);
+    if (position != null) {
+      setState(() {
+        _currentPosition = position;
+        activeSearchLabel = "🏙️ Autour de $city (${parsedDistance.toInt()} km)";
+        isTileExpanded = false;
+      });
+      await _fetchCoiffeuses(position, parsedDistance);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Ville introuvable.")),
+      );
     }
   }
 
   double _calculateDistance(String coiffeusePosition) {
     try {
-      List<String> pos = coiffeusePosition.split(',');
-      double lat = double.parse(pos[0]);
-      double lon = double.parse(pos[1]);
+      final parts = coiffeusePosition.split(',');
+      final lat = double.parse(parts[0]);
+      final lon = double.parse(parts[1]);
+      if (_currentPosition == null) return 0.0;
 
-      return _currentPosition == null
-          ? 0.0
-          : Geolocator.distanceBetween(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
-          lat,
-          lon) /
-          1000;
+      final dist = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        lat,
+        lon,
+      );
+
+      return dist / 1000;
     } catch (e) {
-      print("❌ Erreur de calcul de distance : $e");
+      print("❌ Erreur distance : $e");
       return 0.0;
     }
   }
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+  void _onTabTapped(int index) => setState(() => _currentIndex = index);
 
   @override
   Widget build(BuildContext context) {
@@ -103,22 +148,100 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
           : Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(10.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Filtrer par distance (km) :"),
+                if (activeSearchLabel != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: Text(
+                      activeSearchLabel!,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.grey),
+                    ),
+                  ),
+                const Text("Autour de ma position actuelle :"),
                 Slider(
-                  value: _searchRadius,
+                  value: _gpsRadius,
                   min: 1,
                   max: 50,
                   divisions: 10,
-                  label: "${_searchRadius.toInt()} km",
-                  onChanged: (value) {
+                  label: "${_gpsRadius.toInt()} km",
+                  onChanged: (val) {
                     setState(() {
-                      _searchRadius = value;
+                      _gpsRadius = val;
+                      _currentPosition = _gpsPosition;
+                      cityController.clear();
+                      distanceController.clear();
+                      activeSearchLabel = "📍 Autour de ma position actuelle (${_gpsRadius.toInt()} km)";
                     });
-                    _fetchCoiffeuses();
+                    if (_gpsPosition != null) {
+                      _fetchCoiffeuses(_gpsPosition!, _gpsRadius);
+                    }
                   },
+                ),
+                const Divider(),
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 200),
+                  crossFadeState: isTileExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                  firstChild: ListTile(
+                    title: const Text("Rechercher autour d'une ville"),
+                    trailing: const Icon(Icons.expand_more),
+                    onTap: () {
+                      setState(() {
+                        isTileExpanded = true;
+                        cityController.clear();
+                        distanceController.clear();
+                      });
+                    },
+                  ),
+                  secondChild: Column(
+                    children: [
+                      ListTile(
+                        title: const Text("Rechercher autour d'une ville"),
+                        trailing: const Icon(Icons.expand_less),
+                        onTap: () {
+                          setState(() {
+                            isTileExpanded = false;
+                            cityController.clear();
+                            distanceController.clear();
+                          });
+                        },
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: CityAutocompleteField(
+                                controller: cityController,
+                                apiKey: 'b097f188b11f46d2a02eb55021d168c1',
+                                onCitySelected: (ville) {},
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: TextField(
+                                controller: distanceController,
+                                onTap: () => distanceController.clear(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Distance (km)',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _searchByCity,
+                            icon: const Icon(Icons.search, size: 28),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -127,75 +250,53 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
             child: coiffeuses.isEmpty
                 ? const Center(child: Text("Aucune coiffeuse trouvée."))
                 : ListView.builder(
-              itemCount: coiffeuses.length,
+              itemCount: _paginatedCoiffeuses.length,
               itemBuilder: (context, index) {
-                final coiffeuse = coiffeuses[index];
-                double distance = _calculateDistance(coiffeuse['position']);
+                final c = _paginatedCoiffeuses[index];
+                final distance = _calculateDistance(c['position']);
 
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: c['user']['photo_profil'] != null &&
+                          c['user']['photo_profil'].isNotEmpty
+                          ? NetworkImage("https://www.hairbnb.site${c['user']['photo_profil']}")
+                          : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    ),
+                    title: Text("${c['user']['nom']} ${c['user']['prenom']}"),
+                    subtitle: Text("Distance : ${distance.toStringAsFixed(1)} km"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          backgroundImage:
-                          coiffeuse['user']['photo_profil'] != null &&
-                              coiffeuse['user']['photo_profil'].isNotEmpty
-                              ? NetworkImage('https://www.hairbnb.site${coiffeuse['user']['photo_profil']}')
-                              : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                          onBackgroundImageError: (_, __) =>
-                              print("Erreur de chargement d'image"),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "${coiffeuse['user']['nom']} ${coiffeuse['user']['prenom']}",
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                        IconButton(
+                          icon: const Icon(Icons.person, color: Colors.orange),
+                          onPressed: () {
+                            final coiffeuseObj = Coiffeuse.fromJson(c);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    SalonCoiffeusePage(coiffeuse: coiffeuseObj),
                               ),
-                              Text("Distance : ${distance.toStringAsFixed(1)} km"),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.person, color: Colors.orange),
-                              onPressed: () {
-                                final coiffeuseObj = Coiffeuse.fromJson(coiffeuse);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        SalonCoiffeusePage(coiffeuse: coiffeuseObj),
-                                  ),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.message, color: Colors.blue),
-                              onPressed: () {
-                                final uuid = currentUser?.uuid;
-                                if (uuid == null) return;
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatPage(
-                                      currentUser: currentUser!,
-                                      otherUserId: coiffeuse['user']['uuid'],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.message, color: Colors.blue),
+                          onPressed: () {
+                            if (currentUser?.uuid == null) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatPage(
+                                  currentUser: currentUser!,
+                                  otherUserId: c['user']['uuid'],
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -204,6 +305,50 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
               },
             ),
           ),
+          if (coiffeuses.isNotEmpty)
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Page $_currentPage sur ${((coiffeuses.length - 1) / _itemsPerPage + 1).floor()}"),
+                      Row(
+                        children: [
+                          const Text("Résultats par page : "),
+                          DropdownButton<int>(
+                            value: _itemsPerPage,
+                            items: [5, 10, 20].map((value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text('$value'),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _itemsPerPage = value;
+                                  _currentPage = 1;
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (_currentPage * _itemsPerPage < coiffeuses.length)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                      onPressed: () => setState(() => _currentPage++),
+                      child: const Text("Afficher plus"),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
       bottomNavigationBar: BottomNavBar(
@@ -213,291 +358,3 @@ class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
-// import 'package:geolocator/geolocator.dart';
-// import 'package:hairbnb/models/current_user.dart';
-// import 'package:hairbnb/widgets/Custom_app_bar.dart';
-// import 'package:provider/provider.dart';
-// import '../../models/coiffeuse.dart';
-// import '../../services/providers/api_location_service.dart';
-// import '../../services/providers/current_user_provider.dart';
-// import '../../services/providers/location_service.dart';
-// import '../salon/salon_services_list/salon_coiffeuse_page.dart';
-// import '../chat/chat_page.dart';
-//
-// class CoiffeusesListPage extends StatefulWidget {
-//   @override
-//   _CoiffeusesListPageState createState() => _CoiffeusesListPageState();
-// }
-//
-// class _CoiffeusesListPageState extends State<CoiffeusesListPage> {
-//   List<dynamic> coiffeuses = [];
-//   Position? _currentPosition;
-//   double _searchRadius = 10.0; // Rayon de recherche par défaut en km
-//   late CurrentUser? currentUser;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadUserLocation();
-//   }
-//
-//   /// 🔍 **Récupérer la position actuelle de l'utilisateur**
-//   Future<void> _loadUserLocation() async {
-//     try {
-//       Position? position = await LocationService.getUserLocation();
-//       if (position != null) {
-//         setState(() {
-//           _currentPosition = position;
-//         });
-//         _fetchCoiffeuses();
-//         print("📍 Position actuelle : Latitude = ${_currentPosition?.latitude}, Longitude = ${_currentPosition?.longitude}");
-//       }
-//     } catch (e) {
-//       print("❌ Erreur de récupération de la position : $e");
-//     }
-//   }
-//
-//   /// 📡 **Charger la liste des coiffeuses à proximité**
-//   Future<void> _fetchCoiffeuses() async {
-//     if (_currentPosition == null) return;
-//
-//     try {
-//       List<dynamic> nearbyCoiffeuses = await ApiService.fetchNearbyCoiffeuses(
-//         _currentPosition!.latitude,
-//         _currentPosition!.longitude,
-//         _searchRadius,
-//       );
-//
-//       print("📡 Coiffeuses trouvées : ${nearbyCoiffeuses.length}");
-//
-//       // Récupérer l'UUID du current user
-//       currentUser = Provider.of<CurrentUserProvider>(context, listen: false).currentUser;
-//
-//       // Filtrer pour exclure l'utilisateur actuel s'il est coiffeuse
-//       nearbyCoiffeuses = nearbyCoiffeuses.where((coiffeuse) {
-//         return coiffeuse['user']['uuid'] != currentUser!.uuid;
-//       }).toList();
-//
-//       setState(() {
-//         coiffeuses = nearbyCoiffeuses;
-//       });
-//     } catch (e) {
-//       print("❌ Erreur lors de la récupération des coiffeuses : $e");
-//     }
-//   }
-//
-//   /// 🏁 **Calculer la distance entre l'utilisateur et une coiffeuse**
-//   double _calculateDistance(String coiffeusePosition) {
-//     try {
-//       List<String> pos = coiffeusePosition.split(',');
-//       double coiffeuseLat = double.parse(pos[0]);
-//       double coiffeuseLon = double.parse(pos[1]);
-//
-//       if (_currentPosition == null) return 0.0;
-//
-//       return Geolocator.distanceBetween(
-//         _currentPosition!.latitude,
-//         _currentPosition!.longitude,
-//         coiffeuseLat,
-//         coiffeuseLon,
-//       ) / 1000; // Convertir en km
-//     } catch (e) {
-//       print("❌ Erreur de calcul de distance : $e");
-//       return 0.0;
-//     }
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: CustomAppBar(),
-//       body: _currentPosition == null
-//           ? const Center(child: CircularProgressIndicator())
-//           : Column(
-//         children: [
-//           // 🎛️ **Barre de filtre de distance**
-//           Padding(
-//             padding: const EdgeInsets.all(10.0),
-//             child: Column(
-//               children: [
-//                 const Text("Filtrer par distance (km) :"),
-//                 Slider(
-//                   value: _searchRadius,
-//                   min: 1,
-//                   max: 50,
-//                   divisions: 10,
-//                   label: "${_searchRadius.toInt()} km",
-//                   onChanged: (value) {
-//                     setState(() {
-//                       _searchRadius = value;
-//                     });
-//                     _fetchCoiffeuses();
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-//
-//           // 📋 **Liste des coiffeuses**
-//           Expanded(
-//             child: coiffeuses.isEmpty
-//                 ? const Center(child: Text("Aucune coiffeuse trouvée."))
-//                 : ListView.builder(
-//               itemCount: coiffeuses.length,
-//               itemBuilder: (context, index) {
-//                 final coiffeuse = coiffeuses[index];
-//
-//                 // 🔢 **Calcul de la distance entre la position actuelle et la coiffeuse**
-//                 double distance = _calculateDistance(coiffeuse['position']);
-//
-//                 return Card(
-//                   margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(10),
-//                   ),
-//                   child: Padding(
-//                     padding: const EdgeInsets.all(8.0),
-//                     child: Row(
-//                       children: [
-//                         // 🟢 Avatar de la coiffeuse
-//                         CircleAvatar(
-//                           backgroundImage: coiffeuse['user']['photo_profil'] != null &&
-//                               coiffeuse['user']['photo_profil'].isNotEmpty
-//                               ? NetworkImage('https://www.hairbnb.site${coiffeuse['user']['photo_profil']}')
-//                               : const AssetImage('https://www.hairbnb.site/'+"media/photos/defaults/avatar.png") as ImageProvider,
-//                           onBackgroundImageError: (exception, stackTrace) {
-//                             print("❌ Erreur de chargement de l'image : $exception");
-//                           },
-//                         ),
-//                         const SizedBox(width: 10),
-//
-//                         // 🟢 Informations de la coiffeuse
-//                         Expanded(
-//                           child: Column(
-//                             crossAxisAlignment: CrossAxisAlignment.start,
-//                             children: [
-//                               Text(
-//                                 "${coiffeuse['user']['nom']} ${coiffeuse['user']['prenom']}",
-//                                 style: const TextStyle(fontWeight: FontWeight.bold),
-//                               ),
-//                               Text("Distance : ${distance.toStringAsFixed(1)} km"),
-//                             ],
-//                           ),
-//                         ),
-//
-//                         // 🟢 Boutons sur PC, Icônes sur Android
-//                         Row(
-//                           children: [
-//                             if (kIsWeb || defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android)
-//                               ...[
-//                                 // Icônes pour Android/iOS/Web
-//                                 IconButton(
-//                                   icon: const Icon(Icons.person, color: Colors.orange),
-//                                   onPressed: () {
-//                                     final coiffeuseObj = Coiffeuse.fromJson(coiffeuse);
-//                                     Navigator.push(
-//                                       context,
-//                                       MaterialPageRoute(
-//                                         builder: (context) => SalonCoiffeusePage(coiffeuse: coiffeuseObj),
-//                                       ),
-//                                     );
-//                                   },
-//                                 ),
-//                                 IconButton(
-//                                   icon: const Icon(Icons.message, color: Colors.blue),
-//                                   onPressed: () {
-//                                     final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
-//                                     final currentUserUUID = currentUserProvider.currentUser?.uuid;
-//
-//                                     if (currentUserUUID == null) {
-//                                       print("❌ Erreur : Aucun utilisateur connecté.");
-//                                       return;
-//                                     }
-//
-//                                     Navigator.push(
-//                                       context,
-//                                       MaterialPageRoute(
-//                                         builder: (context) => ChatPage(
-//                                           currentUser: currentUser!,
-//                                           otherUserId: coiffeuse['user']['uuid'],
-//                                           //coiffeuseName: "${currentUserProvider.currentUser?.nom} ${currentUserProvider.currentUser?.prenom}",
-//                                         ),
-//                                       ),
-//                                     );
-//                                   },
-//                                 ),
-//                               ]
-//                             else
-//                               ...[
-//                                 // Boutons pour d'autres plateformes
-//                                 ElevatedButton(
-//                                   onPressed: () {
-//                                     final coiffeuseObj = Coiffeuse.fromJson(coiffeuse);
-//                                     Navigator.push(
-//                                       context,
-//                                       MaterialPageRoute(
-//                                         builder: (context) => SalonCoiffeusePage(coiffeuse: coiffeuseObj),
-//                                       ),
-//                                     );
-//                                   },
-//                                   style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-//                                   child: const Text("Voir Profil"),
-//                                 ),
-//                                 const SizedBox(width: 10),
-//                                 ElevatedButton(
-//                                   onPressed: () {
-//                                     //final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
-//                                     //final currentUserUUID = currentUserProvider.currentUser?.uuid;
-//
-//                                     if (currentUser!.uuid == null) {
-//                                       print("❌ Erreur : Aucun utilisateur connecté.");
-//                                       return;
-//                                     }
-//
-//                                     Navigator.push(
-//                                       context,
-//                                       MaterialPageRoute(
-//                                         builder: (context) => ChatPage(
-//                                           currentUser: currentUser!,
-//                                           otherUserId: coiffeuse['user']['uuid'],
-//                                           //coiffeuseName: "${currentUserProvider.currentUser?.nom} ${currentUserProvider.currentUser?.prenom}",
-//                                         ),
-//                                       ),
-//                                     );
-//                                   },
-//                                   child: const Text("Contacter"),
-//                                 ),
-//                               ]
-//                           ],
-//                         )
-//
-//                       ],
-//                     ),
-//                   ),
-//                 );
-//
-//
-//               },
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }

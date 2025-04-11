@@ -48,6 +48,7 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^13.0.2
   cached_network_image: ^3.4.1
+  flutter_timer_countdown: ^1.0.5
 
 
 dev_dependencies:
