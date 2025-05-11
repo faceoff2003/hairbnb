@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -8,11 +8,11 @@ class CityAutocompleteField extends StatelessWidget {
   final String apiKey;
 
   const CityAutocompleteField({
-    Key? key,
+    super.key,
     required this.controller,
     required this.apiKey,
     this.onCitySelected,
-  }) : super(key: key);
+  });
 
   Future<List<String>> fetchSuggestions(String query) async {
     if (query.length < 3) return [];

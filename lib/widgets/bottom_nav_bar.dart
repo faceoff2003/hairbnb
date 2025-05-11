@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:hairbnb/models/current_user.dart';
 import '../pages/home_page.dart';
 import '../pages/horaires_coiffeuse/afficher_rdvs_coiffeuse_page.dart';
+import '../pages/mes_commandes/mes_commandes_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
 import '../pages/profil/show_profile_page.dart';
@@ -14,10 +15,10 @@ class BottomNavBar extends StatelessWidget {
   final Function(int) onTap;
 
   const BottomNavBar({
-    Key? key,
+    super.key,
     required this.currentIndex,
     required this.onTap,
-  }) : super(key: key);
+  });
 
 
   /// Gestion de la navigation en fonction de l'index
@@ -40,6 +41,12 @@ class BottomNavBar extends StatelessWidget {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => RendezVousPage(coiffeuseId: currentUser!.idTblUser,)),
+        );
+      }
+      else if (currentUser?.type == "client") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MesCommandesPage(currentUser: currentUser!)),
         );
       }
     } else if (index == 3) {

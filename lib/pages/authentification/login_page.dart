@@ -1,9 +1,11 @@
+import 'dart:io';
+import 'package:email_validator/email_validator.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hairbnb/pages/authentification/authentification_services/login_with_google.dart';
 import 'package:hairbnb/pages/authentification/signup_page.dart';
-import 'authentification_services/login_with_email.dart';
-import 'authentification_services/login_with_facebook.dart';
-
+import 'authentification_services_pages/login_with_email.dart';
+import 'authentification_services_pages/login_with_google.dart';
+import 'authentification_services_pages/reset_password.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,22 +15,20 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  //final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   late Color myColor;
   late Size mediaSize;
-  TextEditingController emailController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   bool rememberUser = false;
   bool isPasswordVisible = false;
 
+  bool isAndroidDevice() => kIsWeb ? false : Platform.isAndroid;
+
   @override
   Widget build(BuildContext context) {
-    myColor = Theme
-        .of(context)
-        .primaryColor;
-    mediaSize = MediaQuery
-        .of(context)
-        .size;
+    myColor = Theme.of(context).primaryColor;
+    mediaSize = MediaQuery.of(context).size;
 
     return Container(
       decoration: BoxDecoration(
@@ -36,24 +36,17 @@ class _LoginPageState extends State<LoginPage> {
         image: DecorationImage(
           image: const AssetImage("assets/logo_login/bg.png"),
           fit: BoxFit.cover,
-          colorFilter:
-          ColorFilter.mode(
-              myColor.withAlpha((0.2 * 255).toInt()),
-              BlendMode.dstATop),
+          colorFilter: ColorFilter.mode(myColor.withOpacity(0.2), BlendMode.dstATop),
         ),
       ),
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        // Permet au contenu de se redimensionner avec le clavier
         backgroundColor: Colors.transparent,
         body: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          // Ferme le clavier en appuyant à l'extérieur
           child: SingleChildScrollView(
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: mediaSize.height,
-              ),
+              constraints: BoxConstraints(minHeight: mediaSize.height),
               child: IntrinsicHeight(
                 child: Stack(
                   children: [
@@ -69,65 +62,40 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTop() {
-    return SizedBox(
-      width: mediaSize.width,
-      child: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.location_on_sharp,
-            size: 100,
-            color: Colors.white,
-          ),
-          Text(
-            "Hairbnb",
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 40,
-                letterSpacing: 2),
-          )
-        ],
-      ),
-    );
-  }
+  Widget _buildTop() => SizedBox(
+    width: mediaSize.width,
+    child: const Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.location_on_sharp, size: 100, color: Colors.white),
+        Text("Hairbnb", style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold, letterSpacing: 2)),
+      ],
+    ),
+  );
 
-  Widget _buildBottom() {
-    return SizedBox(
-      width: mediaSize.width,
-      child: Card(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: _buildForm(),
-        ),
+  Widget _buildBottom() => SizedBox(
+    width: mediaSize.width,
+    child: Card(
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
       ),
-    );
-  }
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: _buildForm(),
+      ),
+    ),
+  );
 
-  Widget _buildForm() {
-    return Column(
+  Widget _buildForm() => Form(
+    key: _formKey,
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Bienvenue",
-          style: TextStyle(
-            color: myColor,
-            fontSize: 32,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text("Bienvenue", style: TextStyle(color: myColor, fontSize: 32, fontWeight: FontWeight.w500)),
         _buildGreyText("Veuillez vous connecter avec vos informations"),
         const SizedBox(height: 60),
         _buildGreyText("Adresse e-mail"),
         _buildInputField(emailController, isEmail: true),
-        //_buildInputField(emailController),
         const SizedBox(height: 40),
         _buildGreyText("Mot de passe"),
         _buildInputField(passwordController, isPassword: true),
@@ -138,172 +106,119 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 20),
         _buildOtherLogin(),
       ],
-    );
-  }
+    ),
+  );
 
-  Widget _buildGreyText(String text) {
-    return Text(
-      text,
-      style: const TextStyle(color: Colors.grey),
-    );
-  }
+  Widget _buildGreyText(String text) => Text(text, style: const TextStyle(color: Colors.grey));
 
   Widget _buildInputField(TextEditingController controller, {bool isPassword = false, bool isEmail = false}) {
-    return TextField(
+    return TextFormField(
       controller: controller,
-      obscureText: isPassword ? !isPasswordVisible : false, // Gérer la visibilité du mot de passe
-      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text, // ✅ Afficher @ et .com sur le clavier pour email
-      textInputAction: TextInputAction.next, // ✅ Permet de passer au champ suivant
+      obscureText: isPassword && !isPasswordVisible,
+      keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
+      textInputAction: TextInputAction.next,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Ce champ est requis';
+        if (isEmail && !EmailValidator.validate(value)) return 'Format d\'email invalide';
+        if (isPassword && value.length < 6) return 'Mot de passe trop court';
+        return null;
+      },
       decoration: InputDecoration(
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            isPasswordVisible ? Icons.visibility : Icons.visibility_off, // ✅ Changer l'icône
-          ),
-          onPressed: () {
-            setState(() {
-              isPasswordVisible = !isPasswordVisible; // ✅ Inverser l'état
-            });
-          },
+          icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+          onPressed: () => setState(() => isPasswordVisible = !isPasswordVisible),
         )
-            : const Icon(Icons.done),
+            : null,
       ),
     );
   }
 
-
-  Widget _buildRememberForgot() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+  Widget _buildRememberForgot() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (!isAndroidDevice())
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Checkbox(
-                  value: rememberUser,
-                  onChanged: (value) {
-                    setState(() {
-                      rememberUser = value!;
-                    });
-                  },
-                ),
-                _buildGreyText("Souviens-toi de moi"),
-              ],
+            Checkbox(
+              value: rememberUser,
+              onChanged: (value) => setState(() => rememberUser = value!),
             ),
-            TextButton(
-              onPressed: () {},
-              // Ajouter une fonction pour le mot de passe oublié
-              child: _buildGreyText("MP oublié"),
-            )
+            _buildGreyText("Souviens-toi de moi"),
           ],
         ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SigninPage(),
-                ),
-              );
-            },
-            child: _buildGreyText("Créer votre compte"),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return ElevatedButton(
-      onPressed: () {
-        loginUserWithEmailandPassword(
-            emailController.text, passwordController.text,
-            context, emailController, passwordController);
-        debugPrint(
-            "++++++++vous avez appuyer de le bouton connexion email+mp+++++++++++++");
-      },
-      style: ElevatedButton.styleFrom(
-        shape: const StadiumBorder(),
-        elevation: 20,
-        shadowColor: myColor,
-        minimumSize: const Size.fromHeight(60),
-      ),
-      child: const Text("Connexion"),
-    );
-  }
-
-  Widget _buildOtherLogin() {
-    return Center(
-      child: Column(
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildGreyText("Ou se connecter avec"),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Connexion avec Facebook
-              GestureDetector(
-                onTap: () async {
-                  final user = await loginWithFacebook(context);
-                  if (user != null) {
-                    debugPrint("Connexion réussie avec Facebook: ${user.uid}");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(
-                          "Bienvenue, ${user.email}! Connexion réussie.")),
-                    );
-                  } else {
-                    debugPrint("Échec de connexion Facebook.");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("Échec de connexion Facebook.")),
-                    );
-                  }
-                },
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Image.asset(
-                    "assets/logo_login/facebook.png",
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-
-              // Connexion avec Google
-              GestureDetector(
-                onTap: () async {
-                  final user = await loginWithGoogle(context);
-                  if (user != null) {
-                    debugPrint("Connexion réussie avec Google: ${user.uid}");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(
-                          "Bienvenue, ${user.email}! Connexion réussie.")),
-                    );
-                  } else {
-                    debugPrint("Échec de connexion Google.");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("Échec de connexion Google.")),
-                    );
-                  }
-                },
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Image.asset(
-                    "assets/logo_login/google.png",
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ],
+          TextButton(
+            onPressed: () => showResetPasswordDialog(context),
+            child: _buildGreyText("Mot de passe oublié ?"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SigninPage()),
+            ),
+            child: _buildGreyText("Créer votre compte"),
           ),
         ],
       ),
-    );
-  }
+    ],
+  );
+
+  Widget _buildLoginButton() => ElevatedButton(
+    onPressed: () async {
+      //if (_formKey.currentState!.validate()) {
+        await loginWithEmail(
+          context,
+          emailController.text.trim(),
+          passwordController.text.trim(),
+          emailController: emailController,
+          passwordController: passwordController,
+        );
+      //}
+    },
+
+    style: ElevatedButton.styleFrom(
+      shape: const StadiumBorder(),
+      elevation: 20,
+      shadowColor: myColor,
+      minimumSize: const Size.fromHeight(60),
+    ),
+    child: const Text("Connexion"),
+  );
+
+  Widget _buildOtherLogin() => Center(
+    child: Column(
+      children: [
+        _buildGreyText("Ou se connecter avec"),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: () async {
+            final user = await loginWithGoogle(context);
+            // if (user != null && context.mounted) {
+            //   Navigator.pushReplacement(
+            //     context,
+            //     MaterialPageRoute(
+            //       builder: (context) => ProfileCreationPage(
+            //         email: user.email ?? '',
+            //         userUuid: user.uid,
+            //       ),
+            //     ),
+            //   );
+            // }
+          },
+          child: MouseRegion(
+            cursor: kIsWeb ? SystemMouseCursors.click : MouseCursor.defer,
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Image.asset("assets/logo_login/google.png", fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -7,10 +7,10 @@ class CommuneAutoFill extends StatefulWidget {
   final TextEditingController communeController;
 
   const CommuneAutoFill({
-    Key? key,
+    super.key,
     required this.codePostalController,
     required this.communeController,
-  }) : super(key: key);
+  });
 
   @override
   State<CommuneAutoFill> createState() => _CommuneAutoFillState();

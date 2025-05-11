@@ -49,8 +49,29 @@ dependencies:
   geolocator: ^13.0.2
   cached_network_image: ^3.4.1
   flutter_timer_countdown: ^1.0.5
+  email_validator: ^2.1.17
+  animated_text_kit: ^4.2.3
+  flutter_staggered_animations: ^1.1.0
+  flutter_svg: ^2.0.5
+  image_picker: ^1.0.4
+  google_fonts: ^6.2.1
+  path_provider: ^2.1.5
+  flutter_stripe: ^11.5.0
+  url_launcher: ^6.3.1
+  app_links: ^6.4.0
+  flutter_dotenv: ^5.1.0
+  webview_flutter: ^4.11.0
+  webview_flutter_android: ^4.4.2
+  webview_flutter_wkwebview: ^3.20.0
+  flutter_datetime_picker_plus: ^2.2.0
 
 
+
+  intl: any
+  http_parser: any
+  path: any
+  flutter_html: ^3.0.0
+  flutter_widget_from_html: ^0.16.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -77,6 +98,7 @@ flutter:
   assets:
      - assets/logo_login/
   #   - images/a_dot_ham.jpeg
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

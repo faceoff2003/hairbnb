@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../models/Services.dart';
+import '../../models/services.dart';
 
 class ServiceAPI {
   static const String baseUrl = "https://www.hairbnb.site/api";

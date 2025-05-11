@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class OSMTestPage extends StatefulWidget {
-  const OSMTestPage({Key? key}) : super(key: key);
+  const OSMTestPage({super.key});
 
   @override
   State<OSMTestPage> createState() => _OSMTestPageState();

@@ -1,5 +1,16 @@
-plugins {
-    id 'com.google.gms.google-services'
+buildscript {
+    ext.kotlin_version = '2.1.10'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.3.0' // Utilisez la version appropriée
+        classpath 'com.google.gms:google-services:4.4.2' // Ajoutez cette ligne
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        // Autres classpaths si nécessaire
+    }
 }
 
 allprojects {
@@ -7,9 +18,7 @@ allprojects {
         google()
         mavenCentral()
     }
-
 }
-
 
 rootProject.buildDir = "../build"
 subprojects {
@@ -18,7 +27,33 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
-
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+
+
+
+//plugins {
+//    id 'com.google.gms.google-services'
+//}
+//
+//allprojects {
+//    repositories {
+//        google()
+//        mavenCentral()
+//    }
+//
+//}
+//
+//
+//rootProject.buildDir = "../build"
+//subprojects {
+//    project.buildDir = "${rootProject.buildDir}/${project.name}"
+//}
+//subprojects {
+//    project.evaluationDependsOn(":app")
+//}
+//
+//tasks.register("clean", Delete) {
+//    delete rootProject.buildDir
+//}

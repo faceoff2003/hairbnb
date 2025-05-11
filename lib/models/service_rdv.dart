@@ -5,7 +5,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'RdvConfirmation.dart';
+import 'rdvConfirmation.dart';
 
 class RdvService {
   final String baseUrl = "https://www.hairbnb.site/api";
@@ -38,7 +38,7 @@ class RdvService {
 
 // import 'dart:convert';
 // import 'package:http/http.dart' as http;
-// import 'RdvConfirmation.dart';
+// import 'rdvConfirmation.dart';
 //
 // class RdvService {
 //   Future<List<RdvConfirmation>> fetchRendezVous({

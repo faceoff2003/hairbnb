@@ -20,7 +20,7 @@
       nomSalon: json['nomSalon'] ?? "Salon sans nom",
       slogan: json['slogan'],
       logo: json['logo_salon'],
-      coiffeuseId: json['coiffeuse']['idTblUser'], // 🔥 Récupération de l'ID de la coiffeuse
+      coiffeuseId: json['coiffeuse'], // 🔥 Récupération de l'ID de la coiffeuse
     );
   }
 

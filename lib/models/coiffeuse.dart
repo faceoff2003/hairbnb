@@ -1,5 +1,6 @@
 class Coiffeuse {
   int idTblUser;
+  int id;
   String? denominationSociale;
   String? tva;
   String? position;
@@ -24,6 +25,7 @@ class Coiffeuse {
 
   Coiffeuse({
     required this.idTblUser,
+    required this.id,
     this.denominationSociale,
     this.tva,
     this.position,
@@ -47,6 +49,7 @@ class Coiffeuse {
   factory Coiffeuse.fromJson(Map<String, dynamic> json) {
     return Coiffeuse(
       idTblUser: json['idTblUser'],
+      id: json['id'],
       denominationSociale: json['denomination_sociale'],
       tva: json['tva'],
       position: json['position'],

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/horaires_coiffeuse/services_horaires_coiffeuse/countdown_box_timer.dart';
 import 'package:intl/intl.dart';
 import '../../models/reservation_light.dart';
@@ -9,7 +9,7 @@ import '../../widgets/custom_app_bar.dart';
 class RendezVousPage extends StatefulWidget {
   final int coiffeuseId;
 
-  const RendezVousPage({Key? key, required this.coiffeuseId}) : super(key: key);
+  const RendezVousPage({super.key, required this.coiffeuseId});
 
   @override
   State<RendezVousPage> createState() => _RendezVousPageState();
@@ -51,7 +51,7 @@ class _RendezVousPageState extends State<RendezVousPage> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(), // ✅ On utilise la CustomAppBar ici
+      appBar: const CustomAppBar(),
       body: Column(
         children: [
           Container(
@@ -453,7 +453,7 @@ class _RendezVousPageState extends State<RendezVousPage> with TickerProviderStat
 //
 // // import 'package:flutter/material.dart';
 // //
-// // import '../../models/RdvConfirmation.dart';
+// // import '../../models/rdvConfirmation.dart';
 // // import '../../models/service_rdv.dart';
 // // class RendezVousPage extends StatefulWidget {
 // //   final int coiffeuseId;

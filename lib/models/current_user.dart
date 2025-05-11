@@ -1,4 +1,4 @@
-﻿import 'package:hairbnb/models/coiffeuse.dart';
+import 'package:hairbnb/models/coiffeuse.dart';
 
 import 'client.dart' as client_model;
 
@@ -70,7 +70,7 @@ class CurrentUser {
       'is_active': isActive,
       'photo_profil': photoProfil,
       'type': type,
-      'extra_data': extraData != null ? extraData.toJson() : null,
+      'extra_data': extraData?.toJson(),
     };
   }
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
+import '../services/my_drawer_service/hairbnb_scaffold.dart';
 import '../services/providers/current_user_provider.dart';
-import '../widgets/Custom_app_bar.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -18,12 +18,36 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
 
-    return Scaffold(
-      appBar: const CustomAppBar(),
+    return HairbnbScaffold(
       body: Center(
-        child: currentUser == null
-            ? const CircularProgressIndicator()
-            : Text("Bienvenue, ${currentUser.nom} ${currentUser.prenom}"),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 20),
+            // ElevatedButton.icon(
+            //   onPressed: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => RdvCoiffeusePage()),
+            //     );
+            //   },
+            //   icon: const Icon(Icons.calendar_today),
+            //   label: const Text("Voir mes RDVs"),
+            //   style: ElevatedButton.styleFrom(
+            //     backgroundColor: Colors.orange,
+            //     foregroundColor: Colors.white,
+            //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            //     shape: RoundedRectangleBorder(
+            //       borderRadius: BorderRadius.circular(12),
+            //     ),
+            //   ),
+            // ),
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
@@ -43,6 +67,88 @@ class _HomePageState extends State<HomePage> {
 
 
 
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/widgets/bottom_nav_bar.dart';
+// import 'package:provider/provider.dart';
+// import '../services/my_drawer_service/hairbnb_scaffold.dart';
+// import '../services/providers/current_user_provider.dart';
+//
+// class HomePage extends StatefulWidget {
+//   const HomePage({Key? key}) : super(key: key);
+//
+//   @override
+//   _HomePageState createState() => _HomePageState();
+// }
+//
+// class _HomePageState extends State<HomePage> {
+//   int _currentIndex = 0;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return HairbnbScaffold(
+//       body: Center(
+//         child: Text("Bienvenue, ${Provider.of<CurrentUserProvider>(context).currentUser?.nom ?? ''} ${Provider.of<CurrentUserProvider>(context).currentUser?.prenom ?? ''}"),
+//       ),
+//       bottomNavigationBar: BottomNavBar(
+//         currentIndex: _currentIndex,
+//         onTap: (index) {
+//           setState(() {
+//             _currentIndex = index;
+//           });
+//         },
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+// import 'package:flutter/material.dart';
+// import 'package:hairbnb/widgets/bottom_nav_bar.dart';
+// import 'package:provider/provider.dart';
+// import '../services/providers/current_user_provider.dart';
+// import '../widgets/custom_app_bar.dart';
+//
+// class HomePage extends StatefulWidget {
+//   const HomePage({Key? key}) : super(key: key);
+//
+//   @override
+//   _HomePageState createState() => _HomePageState();
+// }
+//
+// class _HomePageState extends State<HomePage> {
+//   int _currentIndex = 0;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
+//
+//     return Scaffold(
+//       appBar: const CustomAppBar(),
+//       body: Center(
+//         child: currentUser == null
+//             ? const CircularProgressIndicator()
+//             : Text("Bienvenue, ${currentUser.nom} ${currentUser.prenom}"),
+//       ),
+//       bottomNavigationBar: BottomNavBar(
+//         currentIndex: _currentIndex,
+//         onTap: (index) {
+//           setState(() {
+//             _currentIndex = index;
+//           });
+//         },
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+
+
+
 
 
 
@@ -53,7 +159,7 @@ class _HomePageState extends State<HomePage> {
 // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 // import 'package:hairbnb/models/current_user.dart';
 //
-// import '../widgets/Custom_app_bar.dart';
+// import '../widgets/custom_app_bar.dart';
 //
 // class HomePage extends StatefulWidget {
 //   const HomePage({Key? key}) : super(key: key);

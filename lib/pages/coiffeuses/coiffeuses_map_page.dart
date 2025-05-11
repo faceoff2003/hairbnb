@@ -1,22 +1,22 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hairbnb/pages/coiffeuses/services/city_autocomplete.dart';
 import 'package:hairbnb/pages/coiffeuses/services/geocoding_service.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:hairbnb/pages/coiffeuses/services/api_location_service.dart';
 import 'package:hairbnb/pages/coiffeuses/services/location_service.dart';
 import 'package:hairbnb/models/current_user.dart';
 import 'package:hairbnb/services/providers/current_user_provider.dart';
-import 'package:hairbnb/widgets/Custom_app_bar.dart';
+import 'package:hairbnb/widgets/custom_app_bar.dart';
 import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-import '../salon/salon_services_list/salon_coiffeuse_page.dart';
 import '../chat/chat_page.dart';
 import '../../models/coiffeuse.dart';
+import '../salon/salon_services_pages/salon_coiffeuse_page.dart';
 
 class CoiffeusesListPage extends StatefulWidget {
+  const CoiffeusesListPage({super.key});
+
   @override
   _CoiffeusesListPageState createState() => _CoiffeusesListPageState();
 }

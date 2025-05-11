@@ -6,9 +6,9 @@ class StreetAutocomplete extends StatefulWidget {
   final TextEditingController streetController;
 
   const StreetAutocomplete({
-    Key? key,
+    super.key,
     required this.streetController,
-  }) : super(key: key);
+  });
 
   @override
   State<StreetAutocomplete> createState() => _StreetAutocompleteState();

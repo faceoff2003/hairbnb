@@ -1,4 +1,4 @@
-﻿// // PAGE FLUTTER POUR GESTION DES HORAIRES ET INDISPONIBILITES - MODERNE
+// // PAGE FLUTTER POUR GESTION DES HORAIRES ET INDISPONIBILITES - MODERNE
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +12,7 @@ import '../../widgets/bottom_nav_bar.dart'; // Assure-toi que le chemin est corr
 
 class HoraireIndispoPage extends StatefulWidget {
   final int coiffeuseId;
-  const HoraireIndispoPage({required this.coiffeuseId});
+  const HoraireIndispoPage({super.key, required this.coiffeuseId});
 
   @override
   State<HoraireIndispoPage> createState() => _HoraireIndispoPageState();
@@ -265,8 +265,8 @@ class _HoraireIndispoPageState extends State<HoraireIndispoPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: addIndisponibilite,
-        child: Icon(Icons.add),
         backgroundColor: Colors.teal,
+        child: Icon(Icons.add),
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())

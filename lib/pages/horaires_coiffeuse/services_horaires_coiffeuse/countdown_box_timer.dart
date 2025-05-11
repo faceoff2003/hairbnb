@@ -1,11 +1,11 @@
-﻿import 'dart:async';
-import 'dart:ui'; // pour FontFeature
+import 'dart:async';
+// pour FontFeature
 import 'package:flutter/material.dart';
 
 class CountdownBoxTimer extends StatefulWidget {
   final DateTime targetTime;
 
-  const CountdownBoxTimer({Key? key, required this.targetTime}) : super(key: key);
+  const CountdownBoxTimer({super.key, required this.targetTime});
 
   @override
   State<CountdownBoxTimer> createState() => _CountdownBoxTimerState();
