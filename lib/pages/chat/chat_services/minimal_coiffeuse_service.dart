@@ -1,5 +1,5 @@
 ﻿import 'dart:convert';
-import 'package:hairbnb/models/MinimalCoiffeuse.dart';
+import 'package:hairbnb/models/minimal_coiffeuse.dart';
 import 'package:http/http.dart' as http;
 
 class CoiffeuseService {

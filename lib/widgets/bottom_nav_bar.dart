@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:hairbnb/pages/coiffeuses/coiffeuses_map_page.dart';
 import 'package:hairbnb/services/providers/current_user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:hairbnb/models/current_user.dart';
 import '../pages/home_page.dart';
 import '../pages/horaires_coiffeuse/afficher_rdvs_coiffeuse_page.dart';
 import '../pages/mes_commandes/mes_commandes_page.dart';
+import '../pages/salon_geolocalisation/salon_map_page.dart';
 import '../services/auth_services/logout_service.dart';
 import '../pages/chat/messages_page.dart';
 import '../pages/profil/show_profile_page.dart';
@@ -30,14 +30,14 @@ class BottomNavBar extends StatelessWidget {
       // Déconnexion
       await LogoutService.confirmLogout(context);
     } else if (index == 1) {
-      // Rechercher
+      // // Rechercher
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => CoiffeusesListPage()),
-      );
+      MaterialPageRoute(builder: (context) => SalonsListPage()),
+       );
     }else if (index == 2) {
       // Réservation
-      if (currentUser?.type == "coiffeuse") {
+      if (currentUser?.type == "Coiffeuse") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => RendezVousPage(coiffeuseId: currentUser!.idTblUser,)),

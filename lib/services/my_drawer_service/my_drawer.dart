@@ -1,7 +1,7 @@
 ﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/models/current_user.dart';
-import 'package:hairbnb/pages/profil/profil_widgets/show_salon_page.dart';
+import 'package:hairbnb/public_salon_details/show_salon_page.dart';
 import 'package:hairbnb/pages/horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
 import 'package:hairbnb/pages/salon/salon_services_pages/show_services_list_page.dart';
 import 'package:hairbnb/pages/salon/salon_services_pages/promotion/promotions_management_page.dart';
@@ -100,7 +100,7 @@ class _MyDrawerState extends State<MyDrawer> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    widget.currentUser.email ?? "Pas d'email",
+                    widget.currentUser.email,
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: isSmallScreen ? 12 : 14,

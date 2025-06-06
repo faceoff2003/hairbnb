@@ -40,7 +40,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
         children: [
           if (currentUser?.photoProfil != null)
             CircleAvatar(
-              backgroundImage: NetworkImage(baseUrl + currentUser!.photoProfil!),
+              backgroundImage: NetworkImage(currentUser!.photoProfil!),
               radius: 20,
             )
           else

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../models/public_salon_details.dart';
 
 class PublicSalonDetailsApi {
-  static const String baseUrl = 'https://hairbnb.site/api'; // Remplacez par votre URL d'API
+  static const String baseUrl = 'https://hairbnb.site/api';
 
   static Future<PublicSalonDetails> getSalonDetails(int salonId) async {
     final response = await http.get(Uri.parse('$baseUrl/salons/$salonId/'));

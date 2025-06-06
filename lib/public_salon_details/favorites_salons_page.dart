@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/show_favorites.dart';
-import '../pages/profil/profil_widgets/show_salon_page.dart';
+import 'show_salon_page.dart';
 import '../services/my_drawer_service/hairbnb_scaffold.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'api/favorites_api.dart';
