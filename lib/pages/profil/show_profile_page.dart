@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/profil/services/image_util.dart';
 import 'package:hairbnb/pages/profil/services/update_services/adress_update/adress_change_widget.dart';
+import 'package:provider/provider.dart';
 import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
+import '../../services/providers/current_user_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../ai_chat/widgets/ai_chat_wrapper.dart';
 import '../commandes/coiffeuse_commande_page.dart';
@@ -324,7 +326,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final CurrentUser user = widget.currentUser;
+    // final CurrentUser user = widget.currentUser;
+    final CurrentUser user = Provider.of<CurrentUserProvider>(context).currentUser ?? widget.currentUser;
+
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -430,8 +434,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       _infoTile(Icons.email, "Email", user.email),
                       _infoTile(Icons.phone, "Téléphone", user.numeroTelephone),
                       if (user.adresse != null) ...[
-                        // Adresse condensée en une seule tuile
-                        _addressCompactTile(user.adresse!),
+
+                        Consumer<CurrentUserProvider>(
+                          builder: (context, userProvider, child) {
+                            final currentAddr = userProvider.currentUser?.adresse ?? user.adresse;
+                            if (currentAddr != null) {
+                              return _addressCompactTile(currentAddr);
+                            }
+                            return SizedBox.shrink();
+                          },
+                        ),
                       ],
                     ],
                   ),
@@ -753,39 +765,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  // Widget _infoTile(IconData icon, String label, String? value) {
-  //   return ListTile(
-  //     leading: Container(
-  //       padding: const EdgeInsets.all(8),
-  //       decoration: BoxDecoration(
-  //         color: primaryViolet.withOpacity(0.1),
-  //         borderRadius: BorderRadius.circular(8),
-  //       ),
-  //       child: Icon(icon, color: primaryViolet),
-  //     ),
-  //     title: Text(
-  //       label,
-  //       style: const TextStyle(
-  //         fontSize: 14,
-  //         fontWeight: FontWeight.w500,
-  //         color: Colors.grey,
-  //       ),
-  //     ),
-  //     subtitle: Text(
-  //       value != null && value.isNotEmpty ? value : "Non spécifié",
-  //       style: const TextStyle(
-  //         fontSize: 16,
-  //         fontWeight: FontWeight.w600,
-  //       ),
-  //     ),
-  //     trailing: IconButton(
-  //       icon: const Icon(Icons.edit),
-  //       color: primaryViolet,
-  //       onPressed: () => _editField(label, value ?? ""),
-  //     ),
-  //   );
-  // }
-
   // Nouvelle méthode pour afficher l'adresse de manière compacte
   Widget _addressCompactTile(Adresse adresse) {
     // Construire l'adresse complète en un seul texte
@@ -793,12 +772,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     String addressLine2 = '';
 
     // // Ligne 1: Numéro + boîte postale (si disponible) + rue
-    // if (adresse.numero != null && adresse.numero!.isNotEmpty) {
-    //   addressLine1 += adresse.numero!;
-    //   if (adresse.boitePostale != null && adresse.boitePostale!.isNotEmpty) {
-    //     addressLine1 += '/' + adresse.boitePostale!;
-    //   }
-    // }
+    if (adresse.numero != null && adresse.numero!.isNotEmpty) {
+    addressLine1 += adresse.numero!;
+    // if (adresse.boitePostale != null && adresse.boitePostale!.isNotEmpty) {
+     // addressLine1 += '/' + adresse.boitePostale!;
+       //}
+     }
 
     // Ajouter le nom de la rue
     if (adresse.rue != null && adresse.rue!.nomRue != null && adresse.rue!.nomRue!.isNotEmpty) {

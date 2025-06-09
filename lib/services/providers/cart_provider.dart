@@ -30,6 +30,7 @@ class CartProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print("🛒 Réponse API panier: $responseData"); // 🔍 DEBUG AJOUTÉ
         setCartFromApi(responseData);
       } else {
         print("❌ Erreur HTTP ${response.statusCode} : ${response.body}");
@@ -40,15 +41,68 @@ class CartProvider extends ChangeNotifier {
   }
 
 
+
+  // Future<void> fetchCartFromApi(String userId) async {
+  //   try {
+  //     // 🔐 Récupération du token Firebase
+  //     final user = FirebaseAuth.instance.currentUser;
+  //     final token = await user?.getIdToken();
+  //
+  //     if (token == null) throw Exception("Token Firebase manquant");
+  //
+  //     final response = await http.get(
+  //       Uri.parse('https://www.hairbnb.site/api/get_cart/$userId/'),
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         "Authorization": "Bearer $token", // ✅ Envoi sécurisé
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final responseData = json.decode(response.body);
+  //       setCartFromApi(responseData);
+  //     } else {
+  //       print("❌ Erreur HTTP ${response.statusCode} : ${response.body}");
+  //     }
+  //   } catch (e) {
+  //     print("❌ Erreur de connexion au serveur : $e");
+  //   }
+  // }
+
+
   /// **🔹 Mettre à jour les données du panier avec `coiffeuse_id`**
   void setCartFromApi(Map<String, dynamic> cartData) {
+    print("🔄 Traitement des données du panier...");
+
     _cartItems = (cartData['items'] as List)
-        .map((item) => ServiceWithPromo.fromJson(item['service']))
+        .map((item) {
+      print("📦 Item panier: $item");
+      return ServiceWithPromo.fromJson(item['service']);
+    })
         .toList();
 
-    _coiffeuseId = cartData['coiffeuse_id']; // ✅ Stocker l'ID de la coiffeuse
+    _coiffeuseId = cartData['coiffeuse_id'];
+
+    // Vérifier les durées après chargement
+    print("🔢 Panier chargé - ${_cartItems.length} services:");
+    for (var service in _cartItems) {
+      print("   - ${service.intitule}: ${service.temps} minutes");
+    }
+    print("🔢 Durée totale calculée: $totalDuration minutes");
+    print("🏠 ID Coiffeuse: $_coiffeuseId");
+
     notifyListeners();
   }
+
+
+  // void setCartFromApi(Map<String, dynamic> cartData) {
+  //   _cartItems = (cartData['items'] as List)
+  //       .map((item) => ServiceWithPromo.fromJson(item['service']))
+  //       .toList();
+  //
+  //   _coiffeuseId = cartData['coiffeuse_id']; // ✅ Stocker l'ID de la coiffeuse
+  //   notifyListeners();
+  // }
 
 
   Future<Map<String, dynamic>?> envoyerReservation({
@@ -203,32 +257,6 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-
-  // /// **❌ Supprimer un service**
-  // Future<void> removeFromCart(ServiceWithPromo serviceWithPromo, String userId) async {
-  //   final url = Uri.parse('https://www.hairbnb.site/api/remove_from_cart/');
-  //
-  //   try {
-  //     final response = await http.delete(
-  //       url,
-  //       headers: {"Content-Type": "application/json"},
-  //       body: json.encode({
-  //         "user_id": userId,
-  //         "service_id": serviceWithPromo.id
-  //       }),
-  //     );
-  //
-  //     if (response.statusCode == 200) {
-  //       fetchCartFromApi(userId); // ✅ Recharge le panier après suppression
-  //     } else {
-  //       print("❌ Erreur lors de la suppression du service : ${response.statusCode}");
-  //     }
-  //   } catch (e) {
-  //     print("❌ Erreur de connexion lors de la suppression : $e");
-  //   }
-  // }
-
-
   /// **🗑️ Vider complètement le panier**
   void clearCart() {
     _cartItems.clear();
@@ -245,10 +273,27 @@ class CartProvider extends ChangeNotifier {
 
   /// ✅ **Calcul du total du temps estimé**
   int get totalDuration {
-    return _cartItems.fold(0, (total, service) {
+    print("🔢 Calcul totalDuration - cartItems.length: ${_cartItems.length}");
+    int total = _cartItems.fold(0, (total, service) {
+      print("   Service: ${service.intitule}, temps: ${service.temps}");
       return total + service.temps;
     });
+    print("🔢 totalDuration final: $total");
+
+    // 🛡️ PROTECTION: Si totalDuration = 0, utiliser une valeur par défaut
+    if (total <= 0 && _cartItems.isNotEmpty) {
+      print("⚠️ totalDuration était 0, utilisation de 30 min par service par défaut");
+      total = _cartItems.length * 30; // 30 minutes par service par défaut
+    }
+
+    return total;
   }
+
+  // int get totalDuration {
+  //   return _cartItems.fold(0, (total, service) {
+  //     return total + service.temps;
+  //   });
+  // }
 
   /// 🔥 Vider le panier côté API + localement
   Future<bool> clearCartFromServer(String userId) async {
@@ -285,161 +330,3 @@ class CartProvider extends ChangeNotifier {
   }
 
 }
-
-
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http;
-// import 'dart:convert';
-// import '../../models/services.dart';
-//
-// class CartProvider extends ChangeNotifier {
-//   List<Service> _cartItems = [];
-//
-//   List<Service> get cartItems => _cartItems;
-//
-//   /// **📡 Récupérer le panier de l'utilisateur via l'API**
-//   Future<void> fetchCartFromApi(String userId) async {
-//     try {
-//       final response = await http.get(
-//         Uri.parse('https://www.hairbnb.site/api/get_cart_by_user/$userId/'),
-//       );
-//
-//       if (response.statusCode == 200) {
-//         final responseData = json.decode(response.body);
-//         setCartFromApi(responseData); // Mise à jour des données
-//       } else {
-//         print("❌ Erreur lors du chargement du panier");
-//       }
-//     } catch (e) {
-//       print("❌ Erreur de connexion au serveur : $e");
-//     }
-//   }
-//
-//   /// **🛒 Charger le panier depuis l'API et mettre à jour la liste**
-//   void setCartFromApi(Map<String, dynamic> cartData) {
-//     _cartItems = (cartData['items'] as List)
-//         .map((item) => Service.fromJson(item['service']))
-//         .toList();
-//     notifyListeners(); // Met à jour l'interface
-//   }
-//
-//   /// **➕ Ajouter un service au panier avec appel à l'API**
-//   Future<void> addToCart(Service service, String userId) async {
-//     final url = Uri.parse('https://www.hairbnb.site/api/add_to_cart/');
-//
-//     try {
-//       final response = await http.post(
-//         url,
-//         headers: {"Content-Type": "application/json"},
-//         body: json.encode({
-//           "user_id": userId,
-//           "service_id": service.id,
-//         }),
-//       );
-//
-//       if (response.statusCode == 200) {
-//         // Si l'ajout a réussi côté serveur, on met à jour le panier local
-//         if (!_cartItems.any((item) => item.id == service.id)) {
-//           _cartItems.add(service);
-//           notifyListeners();
-//         }
-//         print("✅ Service ajouté au panier côté serveur");
-//       } else {
-//         print("❌ Erreur lors de l'ajout au panier: ${response.statusCode}");
-//       }
-//     } catch (e) {
-//       print("❌ Erreur de connexion lors de l'ajout au panier: $e");
-//     }
-//   }
-//
-//   /// **❌ Supprimer un service du panier**
-//   void removeFromCart(Service service) {
-//     _cartItems.removeWhere((item) => item.id == service.id);
-//     notifyListeners();
-//   }
-//
-//   /// **🗑️ Vider complètement le panier**
-//   void clearCart() {
-//     _cartItems.clear();
-//     notifyListeners();
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:flutter/material.dart';
-// import '../../models/services.dart';
-//
-// class CartProvider extends ChangeNotifier {
-//   List<Service> _cartItems = [];
-//
-//   List<Service> get cartItems => _cartItems;
-//
-//   /// **🛒 Charger le panier depuis l'API et mettre à jour la liste**
-//   void setCartFromApi(Map<String, dynamic> cartData) {
-//     _cartItems = (cartData['items'] as List)
-//         .map((item) => Service.fromJson(item['service']))
-//         .toList();
-//     notifyListeners(); // Met à jour l'interface
-//   }
-//
-//   /// **➕ Ajouter un service au panier**
-//   void addToCart(Service service) {
-//     if (!_cartItems.any((item) => item.id == service.id)) {
-//       _cartItems.add(service);
-//       notifyListeners();
-//     }
-//   }
-//
-//   /// **❌ Supprimer un service du panier**
-//   void removeFromCart(Service service) {
-//     _cartItems.removeWhere((item) => item.id == service.id);
-//     notifyListeners();
-//   }
-//
-//   /// **🗑️ Vider complètement le panier**
-//   void clearCart() {
-//     _cartItems.clear();
-//     notifyListeners();
-//   }
-// }
-
-
-
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:hairbnb/models/services.dart';
-//
-// class CartProvider with ChangeNotifier {
-//   final List<Service> _cartItems = [];
-//
-//   List<Service> get cartItems => _cartItems;
-//
-//   void addToCart(Service service) {
-//     _cartItems.add(service);
-//     notifyListeners(); // Notifie les pages que l'état du panier a changé
-//   }
-//
-//   void removeFromCart(Service service) {
-//     _cartItems.remove(service);
-//     notifyListeners();
-//   }
-//
-//   void clearCart() {
-//     _cartItems.clear();
-//     notifyListeners();
-//   }
-// }

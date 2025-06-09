@@ -66,6 +66,9 @@ class ServiceWithPromo {
     List<PromotionFull> futurePromos = [];
     List<PromotionFull> expiredPromos = [];
 
+    // 🔍 DEBUG - Affichage du JSON pour diagnostic
+    print("🧩 ServiceWithPromo.fromJson - JSON reçu: $json");
+
     if (json['promotion_active'] != null) {
       try {
         activePromo = PromotionFull.fromJson(json['promotion_active']);
@@ -99,11 +102,9 @@ class ServiceWithPromo {
     String? finalSalonNom;
 
     if (parentSalonId != null) {
-      // Utiliser le salonId du parent (recommandé)
       finalSalonId = parentSalonId;
       finalSalonNom = parentSalonNom;
     } else {
-      // Fallback : chercher dans le JSON du service
       finalSalonId = json['salon_id'] ?? json['idTblSalon'] ?? 0;
       finalSalonNom = json['salon_nom'] ?? json['nom_salon'];
 
@@ -112,11 +113,59 @@ class ServiceWithPromo {
       }
     }
 
+    // 🛡️ CORRECTION PRINCIPALE - Gestion robuste du temps
+    int finalTemps = 0;
+
+    // Essayer plusieurs noms de champs possibles pour la durée
+    var tempsValue = json['temps_minutes'] ??
+        json['temps'] ??
+        json['duree'] ??
+        json['duration'] ??
+        json['duree_minutes'] ??
+        json['temps_service'] ??
+        json['duree_service'];
+
+    if (tempsValue != null) {
+      if (tempsValue is int) {
+        finalTemps = tempsValue;
+      } else if (tempsValue is String) {
+        finalTemps = int.tryParse(tempsValue) ?? 0;
+      } else {
+        finalTemps = 0;
+      }
+    }
+
+    // 🔍 DEBUG - Log des valeurs trouvées
+    print("🕒 Temps pour service ${json['intitule_service'] ?? 'Unknown'}: $finalTemps minutes");
+    print("   - Champs temps trouvés dans JSON: ${json.keys.where((k) => k.toLowerCase().contains('temps') || k.toLowerCase().contains('duree')).toList()}");
+
+    // Si aucune durée trouvée, utiliser une valeur par défaut basée sur le type de service
+    if (finalTemps <= 0) {
+      String serviceName = (json['intitule_service'] ?? '').toLowerCase();
+
+      // Estimation intelligente basée sur le nom du service
+      if (serviceName.contains('coupe') || serviceName.contains('shampooing')) {
+        finalTemps = 30;
+      } else if (serviceName.contains('couleur') || serviceName.contains('coloration')) {
+        finalTemps = 120;
+      } else if (serviceName.contains('permanente') || serviceName.contains('lissage')) {
+        finalTemps = 180;
+      } else if (serviceName.contains('brushing')) {
+        finalTemps = 45;
+      } else if (serviceName.contains('massage')) {
+        finalTemps = 60;
+      } else {
+        finalTemps = 45; // Valeur par défaut générale
+      }
+
+      print("⚠️ Temps non trouvé pour '${json['intitule_service']}', utilisation de $finalTemps min par défaut");
+    }
+
     return ServiceWithPromo(
       id: json['idTblService'] ?? 0,
       intitule: json['intitule_service'] ?? '',
       description: json['description'] ?? '',
-      temps: json['temps_minutes'] ?? 0,
+      temps: finalTemps, // 🛡️ Utilisation de la valeur calculée
       prix: json['prix'] != null ? double.tryParse(json['prix'].toString()) ?? 0.0 : 0.0,
       categoryId: json['category_id'],
       categoryName: json['category_name'],
@@ -128,6 +177,76 @@ class ServiceWithPromo {
       prix_final: json['prix_final'] != null ? double.tryParse(json['prix_final'].toString()) ?? 0.0 : 0.0,
     );
   }
+  // factory ServiceWithPromo.fromJson(Map<String, dynamic> json, {int? parentSalonId, String? parentSalonNom}) {
+  //   PromotionFull? activePromo;
+  //   List<PromotionFull> futurePromos = [];
+  //   List<PromotionFull> expiredPromos = [];
+  //
+  //   // 🔍 DEBUG - Affichage du JSON pour diagnostic
+  //   print("🧩 ServiceWithPromo.fromJson - JSON reçu: $json");
+  //
+  //   if (json['promotion_active'] != null) {
+  //     try {
+  //       activePromo = PromotionFull.fromJson(json['promotion_active']);
+  //     } catch (e) {
+  //       print('❌ Erreur promotion_active: $e');
+  //     }
+  //   }
+  //
+  //   if (json['promotions_a_venir'] != null) {
+  //     try {
+  //       futurePromos = (json['promotions_a_venir'] as List)
+  //           .map((promoJson) => PromotionFull.fromJson(promoJson))
+  //           .toList();
+  //     } catch (e) {
+  //       print('❌ Erreur promotions_a_venir: $e');
+  //     }
+  //   }
+  //
+  //   if (json['promotions_expirees'] != null) {
+  //     try {
+  //       expiredPromos = (json['promotions_expirees'] as List)
+  //           .map((promoJson) => PromotionFull.fromJson(promoJson))
+  //           .toList();
+  //     } catch (e) {
+  //       print('❌ Erreur promotions_expirees: $e');
+  //     }
+  //   }
+  //
+  //   // 🔥 LOGIQUE SIMPLE : Utiliser parentSalonId si fourni, sinon chercher dans le JSON
+  //   int finalSalonId;
+  //   String? finalSalonNom;
+  //
+  //   if (parentSalonId != null) {
+  //     // Utiliser le salonId du parent (recommandé)
+  //     finalSalonId = parentSalonId;
+  //     finalSalonNom = parentSalonNom;
+  //   } else {
+  //     // Fallback : chercher dans le JSON du service
+  //     finalSalonId = json['salon_id'] ?? json['idTblSalon'] ?? 0;
+  //     finalSalonNom = json['salon_nom'] ?? json['nom_salon'];
+  //
+  //     if (finalSalonId == 0) {
+  //       print('⚠️ WARNING: Aucun salonId valide trouvé pour le service ${json['idTblService']}');
+  //     }
+  //   }
+  //
+  //   return ServiceWithPromo(
+  //     id: json['idTblService'] ?? 0,
+  //     intitule: json['intitule_service'] ?? '',
+  //     description: json['description'] ?? '',
+  //     temps: json['temps_minutes'] ?? 0,
+  //     prix: json['prix'] != null ? double.tryParse(json['prix'].toString()) ?? 0.0 : 0.0,
+  //     categoryId: json['category_id'],
+  //     categoryName: json['category_name'],
+  //     salonId: finalSalonId,
+  //     salonNom: finalSalonNom,
+  //     promotion_active: activePromo,
+  //     promotions_a_venir: futurePromos,
+  //     promotions_expirees: expiredPromos,
+  //     prix_final: json['prix_final'] != null ? double.tryParse(json['prix_final'].toString()) ?? 0.0 : 0.0,
+  //   );
+  // }
 
   Map<String, dynamic> toJson() {
     return {

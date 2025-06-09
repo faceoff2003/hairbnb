@@ -47,4 +47,35 @@ class CurrentUserProvider with ChangeNotifier {
     _currentUser = null;
     notifyListeners();
   }
+
+  /// 🔄 Recharger l'utilisateur après une modification
+  Future<void> refreshCurrentUser() async {
+    final firebaseUser = _auth.currentUser;
+    if (firebaseUser == null) return;
+
+    try {
+      final token = await firebaseUser.getIdToken();
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/get_current_user/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = json.decode(decodedBody);
+        // ✅ Utiliser la même structure que fetchCurrentUser
+        _currentUser = CurrentUser.fromJson(data['user']);
+        notifyListeners();
+        print("✅ Utilisateur rechargé avec succès");
+      } else {
+        print("⚠️ Erreur rechargement utilisateur (${response.statusCode})");
+      }
+    } catch (error) {
+      print("❌ Erreur lors du rechargement : $error");
+    }
+  }
 }

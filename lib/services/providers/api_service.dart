@@ -20,6 +20,4 @@ class ServiceAPI {
       throw Exception("Erreur lors du chargement des services");
     }
   }
-
-
 }
