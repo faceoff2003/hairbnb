@@ -12,7 +12,7 @@
     required this.pourcentage,
     required this.dateDebut,
     required this.dateFin,
-    this.isActiveValue = true, // Par défaut à true pour les nouvelles promotions
+    this.isActiveValue = true,
   });
 
   factory Promotion.fromJson(Map<String, dynamic> json) {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/profil/services/image_util.dart';
+import 'package:hairbnb/pages/profil/services/update_services/adress_update/adress_change_widget.dart';
 import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -13,8 +14,7 @@ import '../salon/salon_services_pages/promotion/promotions_management_page.dart'
 import '../salon/salon_services_pages/show_services_list_page.dart';
 import '../../public_salon_details/show_salon_page.dart';
 import 'services/delete_account/delete_account_service.dart';
-import 'services/update_services/adress_update/adress_update_service.dart';
-import 'services/update_services/phone_update/phone_update_service.dart';
+import 'services/update_services/phone_update/phone_edit_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   final CurrentUser currentUser;
@@ -67,6 +67,23 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   String capitalize(String s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1).toLowerCase() : "";
 
   void _editField(String fieldName, String currentValue) {
+    // Pour le numéro de téléphone, utiliser le nouveau widget dédié
+    if (fieldName == "Téléphone") {
+      showPhoneEditDialog(
+        context,
+        widget.currentUser,
+        primaryColor: primaryViolet,
+        successColor: successGreen,
+        errorColor: errorRed,
+        setLoadingState: (bool value) {
+          setState(() {
+            isLoading = value;
+          });
+        },
+      );
+      return;
+    }
+
     final TextEditingController fieldController = TextEditingController(text: currentValue);
 
     showDialog(
@@ -98,15 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
                 // Vérifier que le champ a changé et n'est pas vide
                 if (fieldController.text.isNotEmpty && fieldController.text != currentValue) {
-
-                  // Si c'est le numéro de téléphone, utiliser le service spécifique
-                  if (fieldName == "Téléphone") {
-                    await _updatePhoneNumber(fieldController.text);
-                  }
-                  // Sinon utiliser la méthode générique
-                  else {
-                    await _updateUserProfileField(widget.currentUser.uuid, {fieldName: fieldController.text});
-                  }
+                  await _updateUserProfileField(widget.currentUser.uuid, {fieldName: fieldController.text});
                 }
               },
               style: TextButton.styleFrom(foregroundColor: primaryViolet),
@@ -118,35 +127,60 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  Future<void> _updatePhoneNumber(String newPhone) async {
-    await PhoneUpdateService.updateUserPhoneNumber(
-      context,
-      widget.currentUser,
-      newPhone,
-      successGreen: successGreen,
-      errorRed: errorRed,
-      setLoadingState: (bool value) {
-        setState(() {
-          isLoading = value;
-        });
-      },
-    );
-  }
 
-  Future<void> _updateUserAddress(Map<String, dynamic> addressData) async {
-    await AddressUpdateService.updateUserAddress(
-      context,
-      widget.currentUser,
-      addressData,
-      successGreen: successGreen,
-      errorRed: errorRed,
-      setLoadingState: (bool value) {
-        setState(() {
-          isLoading = value;
-        });
-      },
-    );
-  }
+  // void _editField(String fieldName, String currentValue) {
+  //   final TextEditingController fieldController = TextEditingController(text: currentValue);
+  //
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //         title: Text("Modifier $fieldName", style: TextStyle(color: primaryViolet, fontWeight: FontWeight.bold)),
+  //         content: TextField(
+  //           controller: fieldController,
+  //           decoration: InputDecoration(
+  //             hintText: "Nouvelle valeur pour $fieldName",
+  //             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  //             focusedBorder: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(10),
+  //               borderSide: BorderSide(color: primaryViolet, width: 2),
+  //             ),
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             style: TextButton.styleFrom(foregroundColor: Colors.grey),
+  //             child: const Text("Annuler"),
+  //           ),
+  //           TextButton(
+  //             onPressed: () async {
+  //               Navigator.pop(context);
+  //
+  //               // Vérifier que le champ a changé et n'est pas vide
+  //               if (fieldController.text.isNotEmpty && fieldController.text != currentValue) {
+  //
+  //                 // Si c'est le numéro de téléphone, utiliser le service spécifique
+  //                 if (fieldName == "Téléphone") {
+  //                   await _updatePhoneNumber(fieldController.text);
+  //                 }
+  //                 // Sinon utiliser la méthode générique
+  //                 else {
+  //                   await _updateUserProfileField(widget.currentUser.uuid, {fieldName: fieldController.text});
+  //                 }
+  //               }
+  //             },
+  //             style: TextButton.styleFrom(foregroundColor: primaryViolet),
+  //             child: const Text("Sauvegarder"),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
+
 
   Future<void> _updateUserProfileField(String userUuid, Map<String, dynamic> updatedData) async {
     setState(() {
@@ -161,112 +195,132 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   void _editAddress(Adresse adresse) {
-    // Contrôleurs pour chaque champ d'adresse
-    final numeroController = TextEditingController(text: adresse.numero ?? '');
-    //final boiteController = TextEditingController(text: adresse.boitePostale ?? '');
-    final rueController = TextEditingController(text: adresse.rue?.nomRue ?? '');
-    final communeController = TextEditingController(text: adresse.rue?.localite?.commune ?? '');
-    final codePostalController = TextEditingController(text: adresse.rue?.localite?.codePostal ?? '');
-
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text("Modifier l'adresse", style: TextStyle(color: primaryViolet, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Champs pour numéro
-                TextField(
-                  controller: numeroController,
-                  decoration: InputDecoration(
-                    labelText: "Numéro",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryViolet, width: 2),
-                    ),
-                  ),
-                ),
-               const SizedBox(height: 8),
-                //const SizedBox(height: 8),
-                // Champs pour rue
-                TextField(
-                  controller: rueController,
-                  decoration: InputDecoration(
-                    labelText: "Rue",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryViolet, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Champs pour commune
-                TextField(
-                  controller: communeController,
-                  decoration: InputDecoration(
-                    labelText: "Commune",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryViolet, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Champs pour code postal
-                TextField(
-                  controller: codePostalController,
-                  decoration: InputDecoration(
-                    labelText: "Code postal",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: primaryViolet, width: 2),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(foregroundColor: Colors.grey),
-              child: const Text("Annuler"),
-            ),
-            TextButton(
-              onPressed: () {
-                // Préparer les données d'adresse
-                Map<String, dynamic> addressData = {
-                  'numero': numeroController.text,
-                  //'boitePostale': boiteController.text,
-                  'rue': {
-                    'nomRue': rueController.text,
-                    'localite': {
-                      'commune': communeController.text,
-                      'codePostal': codePostalController.text
-                    }
-                  }
-                };
-
-                Navigator.pop(context);
-
-                // Appeler le service pour mettre à jour l'adresse
-                _updateUserAddress(addressData);
-              },
-              style: TextButton.styleFrom(foregroundColor: primaryViolet),
-              child: const Text("Sauvegarder"),
-            ),
-          ],
+        return AddressChangeWidget(
+          currentUser: widget.currentUser,
+          currentAddress: adresse,
+          setLoadingState: (bool value) {
+            setState(() {
+              isLoading = value;
+            });
+          },
+          primaryColor: primaryViolet,
+          successColor: successGreen,
+          errorColor: errorRed,
         );
       },
     );
   }
+
+  // void _editAddress(Adresse adresse) {
+  //   // Contrôleurs pour chaque champ d'adresse
+  //   final numeroController = TextEditingController(text: adresse.numero ?? '');
+  //   //final boiteController = TextEditingController(text: adresse.boitePostale ?? '');
+  //   final rueController = TextEditingController(text: adresse.rue?.nomRue ?? '');
+  //   final communeController = TextEditingController(text: adresse.rue?.localite?.commune ?? '');
+  //   final codePostalController = TextEditingController(text: adresse.rue?.localite?.codePostal ?? '');
+  //
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  //         title: Text("Modifier l'adresse", style: TextStyle(color: primaryViolet, fontWeight: FontWeight.bold)),
+  //         content: SingleChildScrollView(
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               // Champs pour numéro
+  //               TextField(
+  //                 controller: numeroController,
+  //                 decoration: InputDecoration(
+  //                   labelText: "Numéro",
+  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  //                   focusedBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(10),
+  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
+  //                   ),
+  //                 ),
+  //               ),
+  //              const SizedBox(height: 8),
+  //               //const SizedBox(height: 8),
+  //               // Champs pour rue
+  //               TextField(
+  //                 controller: rueController,
+  //                 decoration: InputDecoration(
+  //                   labelText: "Rue",
+  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  //                   focusedBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(10),
+  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
+  //                   ),
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 8),
+  //               // Champs pour commune
+  //               TextField(
+  //                 controller: communeController,
+  //                 decoration: InputDecoration(
+  //                   labelText: "Commune",
+  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  //                   focusedBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(10),
+  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
+  //                   ),
+  //                 ),
+  //               ),
+  //               const SizedBox(height: 8),
+  //               // Champs pour code postal
+  //               TextField(
+  //                 controller: codePostalController,
+  //                 decoration: InputDecoration(
+  //                   labelText: "Code postal",
+  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+  //                   focusedBorder: OutlineInputBorder(
+  //                     borderRadius: BorderRadius.circular(10),
+  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             style: TextButton.styleFrom(foregroundColor: Colors.grey),
+  //             child: const Text("Annuler"),
+  //           ),
+  //           TextButton(
+  //             onPressed: () {
+  //               // Préparer les données d'adresse
+  //               Map<String, dynamic> addressData = {
+  //                 'numero': numeroController.text,
+  //                 //'boitePostale': boiteController.text,
+  //                 'rue': {
+  //                   'nomRue': rueController.text,
+  //                   'localite': {
+  //                     'commune': communeController.text,
+  //                     'codePostal': codePostalController.text
+  //                   }
+  //                 }
+  //               };
+  //
+  //               Navigator.pop(context);
+  //
+  //               // Appeler le service pour mettre à jour l'adresse
+  //               _updateUserAddress(addressData);
+  //             },
+  //             style: TextButton.styleFrom(foregroundColor: primaryViolet),
+  //             child: const Text("Sauvegarder"),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -676,10 +730,61 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       trailing: IconButton(
         icon: const Icon(Icons.edit),
         color: primaryViolet,
-        onPressed: () => _editField(label, value ?? ""),
+        onPressed: () {
+          // Utilisation spéciale pour le téléphone
+          if (label == "Téléphone") {
+            showPhoneEditDialog(
+              context,
+              widget.currentUser,
+              primaryColor: primaryViolet,
+              successColor: successGreen,
+              errorColor: errorRed,
+              setLoadingState: (bool value) {
+                setState(() {
+                  isLoading = value;
+                });
+              },
+            );
+          } else {
+            _editField(label, value ?? "");
+          }
+        },
       ),
     );
   }
+
+  // Widget _infoTile(IconData icon, String label, String? value) {
+  //   return ListTile(
+  //     leading: Container(
+  //       padding: const EdgeInsets.all(8),
+  //       decoration: BoxDecoration(
+  //         color: primaryViolet.withOpacity(0.1),
+  //         borderRadius: BorderRadius.circular(8),
+  //       ),
+  //       child: Icon(icon, color: primaryViolet),
+  //     ),
+  //     title: Text(
+  //       label,
+  //       style: const TextStyle(
+  //         fontSize: 14,
+  //         fontWeight: FontWeight.w500,
+  //         color: Colors.grey,
+  //       ),
+  //     ),
+  //     subtitle: Text(
+  //       value != null && value.isNotEmpty ? value : "Non spécifié",
+  //       style: const TextStyle(
+  //         fontSize: 16,
+  //         fontWeight: FontWeight.w600,
+  //       ),
+  //     ),
+  //     trailing: IconButton(
+  //       icon: const Icon(Icons.edit),
+  //       color: primaryViolet,
+  //       onPressed: () => _editField(label, value ?? ""),
+  //     ),
+  //   );
+  // }
 
   // Nouvelle méthode pour afficher l'adresse de manière compacte
   Widget _addressCompactTile(Adresse adresse) {

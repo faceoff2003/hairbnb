@@ -25,7 +25,6 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
-    final String baseUrl = "https://www.hairbnb.site/";
 
     return AppBar(
       backgroundColor: Colors.orange,

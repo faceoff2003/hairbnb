@@ -50,22 +50,6 @@ class PromotionService {
     }
   }
 
-
-
-
-  // static Future<Map<String, dynamic>> deletePromotion(int promotionId) async {
-  //   try {
-  //     final success = await PromotionApi.deletePromotion(promotionId);
-  //     if (success) {
-  //       return {'success': true, 'message': 'Promotion supprimée avec succès'};
-  //     } else {
-  //       return {'success': false, 'error': 'Échec de la suppression'};
-  //     }
-  //   } catch (e) {
-  //     return {'success': false, 'error': 'Erreur: $e'};
-  //   }
-  // }
-
   // ✅ Fusionne toutes les promos dans un seul tableau pour le modal
   static Future<Map<String, dynamic>> getAllPromotionsForService(ServiceWithPromo service) async {
     try {

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
-
 import '../../models/service_with_promo.dart';
 
 class CartProvider extends ChangeNotifier {
@@ -40,24 +39,6 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-
-  // /// **📡 Charger le panier depuis l'API et récupérer `coiffeuseId`**
-  // Future<void> fetchCartFromApi(String userId) async {
-  //   try {
-  //     final response = await http.get(
-  //       Uri.parse('https://www.hairbnb.site/api/get_cart/$userId/'),
-  //     );
-  //
-  //     if (response.statusCode == 200) {
-  //       final responseData = json.decode(response.body);
-  //       setCartFromApi(responseData);
-  //     } else {
-  //       print("❌ Erreur lors du chargement du panier");
-  //     }
-  //   } catch (e) {
-  //     print("❌ Erreur de connexion au serveur : $e");
-  //   }
-  // }
 
   /// **🔹 Mettre à jour les données du panier avec `coiffeuse_id`**
   void setCartFromApi(Map<String, dynamic> cartData) {
@@ -127,93 +108,6 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  // Future<bool> envoyerReservation({
-  //   required String userId,
-  //   required DateTime dateHeure,
-  //   required String methodePaiement,
-  // }) async {
-  //   if (coiffeuseId == null || cartItems.isEmpty) return false;
-  //
-  //   final url = Uri.parse('https://www.hairbnb.site/api/create_rendez_vous/');
-  //
-  //   // 🔐 Récupération du token Firebase
-  //   final user = FirebaseAuth.instance.currentUser;
-  //   final token = await user?.getIdToken();
-  //
-  //   if (token == null) {
-  //     print("❌ Token Firebase manquant");
-  //     return false;
-  //   }
-  //
-  //   final body = json.encode({
-  //     "user_id": userId,
-  //     "coiffeuse_id": coiffeuseId,
-  //     "date_heure": dateHeure.toIso8601String(),
-  //     "services": cartItems.map((s) => s.id).toList(),
-  //     "methode_paiement": methodePaiement,
-  //     "total_price": totalPrice,
-  //     "total_duration": totalDuration,
-  //   });
-  //
-  //   try {
-  //     final response = await http.post(
-  //       url,
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         "Authorization": "Bearer $token", // ✅ Envoi du token
-  //       },
-  //       body: body,
-  //     );
-  //
-  //     if (response.statusCode == 201) {
-  //       clearCart(); // 🧹 Vider le panier après succès
-  //       return true;
-  //     } else {
-  //       print("❌ Erreur serveur : ${response.body}");
-  //       return false;
-  //     }
-  //   } catch (e) {
-  //     print("🚨 Erreur réseau : $e");
-  //     return false;
-  //   }
-  // }
-
-
-  // Future<bool> envoyerReservation({
-  //   required String userId,
-  //   required DateTime dateHeure,
-  //   required String methodePaiement,
-  // }) async {
-  //   if (coiffeuseId == null || cartItems.isEmpty) return false;
-  //
-  //   final url = Uri.parse('https://www.hairbnb.site/api/create_rendez_vous/');
-  //   final body = json.encode({
-  //     "user_id": userId,
-  //     "coiffeuse_id": coiffeuseId,
-  //     "date_heure": dateHeure.toIso8601String(),
-  //     "services": cartItems.map((s) => s.id).toList(),
-  //     "methode_paiement": methodePaiement,
-  //     "total_price": totalPrice,
-  //     "total_duration": totalDuration,
-  //   });
-  //
-  //   try {
-  //     final response = await http.post(url, headers: {
-  //       "Content-Type": "application/json",
-  //     }, body: body);
-  //
-  //     if (response.statusCode == 201) {
-  //       clearCart(); // 🧹 vider le panier après succès
-  //       return true;
-  //     } else {
-  //       print("❌ Erreur serveur : ${response.body}");
-  //       return false;
-  //     }
-  //   } catch (e) {
-  //     print("🚨 Erreur réseau : $e");
-  //     return false;
-  //   }
-  // }
 
   /// **➕ Ajouter un service au panier**
   Future<void> addToCart(ServiceWithPromo serviceWithPromo, String userId) async {

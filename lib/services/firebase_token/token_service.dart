@@ -18,30 +18,20 @@ class TokenService {
   /// 2. Si absent, tente de le récupérer depuis FirebaseAuth et le sauvegarde localement
   /// Retourne : le token en String, ou null en cas d’échec
   //////////////////////////////////////////////////////////////////////////////////////////////
-  static Future<String?> getAuthToken() async {
+  static Future<String?> getAuthToken({bool forceRefresh = false}) async {
     try {
-      // Option 1 : lecture locale via SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString(_tokenKey);
-
-      if (token != null && token.isNotEmpty) {
-        return token;
-      }
-
-      // Option 2 : récupération via FirebaseAuth
       final firebaseUser = FirebaseAuth.instance.currentUser;
+
       if (firebaseUser != null) {
-        token = await firebaseUser.getIdToken();
+        final token = await firebaseUser.getIdToken(forceRefresh);
 
         // Stocker le token localement pour usage futur
-        if (token != null) {
-          await prefs.setString(_tokenKey, token);
-        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_tokenKey, token!);
 
         return token;
       }
 
-      // Aucun utilisateur connecté ou token invalide
       return null;
     } catch (e) {
       if (kDebugMode) {
@@ -50,6 +40,41 @@ class TokenService {
       return null;
     }
   }
+
+
+
+  // static Future<String?> getAuthToken() async {
+  //   try {
+  //     // Option 1 : lecture locale via SharedPreferences
+  //     final prefs = await SharedPreferences.getInstance();
+  //     String? token = prefs.getString(_tokenKey);
+  //
+  //     if (token != null && token.isNotEmpty) {
+  //       return token;
+  //     }
+  //
+  //     // Option 2 : récupération via FirebaseAuth
+  //     final firebaseUser = FirebaseAuth.instance.currentUser;
+  //     if (firebaseUser != null) {
+  //       token = await firebaseUser.getIdToken();
+  //
+  //       // Stocker le token localement pour usage futur
+  //       if (token != null) {
+  //         await prefs.setString(_tokenKey, token);
+  //       }
+  //
+  //       return token;
+  //     }
+  //
+  //     // Aucun utilisateur connecté ou token invalide
+  //     return null;
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('Erreur lors de la récupération du token: $e');
+  //     }
+  //     return null;
+  //   }
+  // }
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// Méthode pour sauvegarder un token dans SharedPreferences

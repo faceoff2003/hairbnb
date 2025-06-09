@@ -14,14 +14,11 @@ class ServicesApiService {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         final token = await user.getIdToken();
-        print("🔑 Token Firebase récupéré avec succès");
         return token;
       } else {
-        print("❌ Aucun utilisateur Firebase connecté");
         return null;
       }
     } catch (e) {
-      print("❌ Erreur récupération token Firebase: $e");
       return null;
     }
   }
@@ -30,7 +27,6 @@ class ServicesApiService {
   static Future<List<Categorie>> chargerCategories() async {
     try {
       final token = await _obtenirTokenFirebase();
-      print("🔑 TOKEN FIREBASE: ${token?.substring(0, 20)}...");
 
       if (token == null) {
         throw Exception('Token Firebase manquant - Utilisateur non connecté');
@@ -44,12 +40,8 @@ class ServicesApiService {
         },
       );
 
-      print("📡 STATUS CODE: ${response.statusCode}");
-      print("📡 RESPONSE BODY: ${response.body}");
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print("📋 DATA DECODED: $data");
 
         if (data['status'] == 'success') {
           final categoriesJson = data['categories'] as List;
@@ -98,9 +90,6 @@ class ServicesApiService {
           'Authorization': 'Bearer $token',
         },
       );
-
-      print("📡 Services catégorie $categorieId - Status: ${response.statusCode}");
-      print("📡 Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -151,13 +140,9 @@ class ServicesApiService {
           },
         );
 
-        print("📡 URL: $url - Status: ${response.statusCode}");
-        print("📡 Response Body: ${response.body}");
-
         if (response.statusCode == 200) {
           try {
             final data = json.decode(response.body);
-            print("📋 Data décodée: $data");
 
             // Essayons différents formats de réponse
             List<dynamic>? servicesJson;
@@ -232,9 +217,6 @@ class ServicesApiService {
           'temps_minutes': tempsMinutes,
         }),
       );
-
-      print("📡 Réponse ajout service: ${response.statusCode}");
-      print("📡 Response body: ${response.body}");
 
       if (response.statusCode == 201) {
         print("✅ Service ajouté avec succès");
@@ -345,6 +327,44 @@ class ServicesApiService {
       }
     } catch (e) {
       print("❌ Erreur modification service: $e");
+      throw e;
+    }
+  }
+
+  /// Récupérer tous les services d'un salon organisés par catégorie
+  static Future<Map<String, dynamic>> chargerServicesParCategoriePourSalon(int salonId) async {
+    try {
+      final token = await _obtenirTokenFirebase();
+      if (token == null) {
+        throw Exception('Token Firebase manquant - Utilisateur non connecté');
+      }
+
+      print("🔄 Chargement des services du salon ID: $salonId");
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/salon/$salonId/services-by-category/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'success') {
+          print("✅ Services du salon récupérés: ${data['total_services']} services");
+          return data;
+        } else {
+          throw Exception(data['message'] ?? 'Erreur lors du chargement des services du salon');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Non autorisé - Token Firebase invalide');
+      } else {
+        throw Exception('Erreur serveur: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print("❌ ERREUR chargement services salon: $e");
       throw e;
     }
   }

@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/favorites.dart';
 import '../models/public_salon_details.dart';
 import 'api/PublicSalonDetailsApi.dart';
-import 'modals/showHorairesModal.dart';
+import 'modals/show_horaires_modal.dart';
 import 'services/favorites_services.dart';
 import 'widgets/gallery_widget.dart';
 import 'widgets/service_price_widget.dart';
