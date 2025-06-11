@@ -61,7 +61,7 @@ class CurrentUser {
       role: userData['role'],
       sexe: userData['sexe'],
       type: userData['type'],
-      extraData: extraDataJson != null && userData['type'] == 'coiffeuse'
+      extraData: extraDataJson != null && userData['type']?.toLowerCase() == 'coiffeuse'
           ? CoiffeuseData.fromJson(extraDataJson)
           : null,
     );

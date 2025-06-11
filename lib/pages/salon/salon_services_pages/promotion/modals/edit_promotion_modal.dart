@@ -1,14 +1,17 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../../../models/promotion_full.dart';
+import '../../../../../services/firebase_token/token_service.dart';
 
-void showCreatePromotionModal({
+void showEditPromotionModal({
   required BuildContext context,
   required int salonId,
   required int serviceId,
-  required VoidCallback onPromoAdded,
+  required PromotionFull promotion,
+  required VoidCallback onPromoUpdated,
 }) {
 
   // Vérifier que les IDs sont valides
@@ -38,9 +41,12 @@ void showCreatePromotionModal({
     return;
   }
 
-  final TextEditingController discountController = TextEditingController();
-  DateTime? startDate;
-  DateTime? endDate;
+  // 🔥 NOUVEAU : Pré-remplir avec les données existantes
+  final TextEditingController discountController = TextEditingController(
+      text: promotion.pourcentage.toStringAsFixed(0)
+  );
+  DateTime? startDate = promotion.dateDebut;
+  DateTime? endDate = promotion.dateFin;
   bool isLoading = false;
   String? errorMessage;
 
@@ -55,9 +61,9 @@ void showCreatePromotionModal({
   };
 
   Map<String, bool> isValid = {
-    'discount': false,
-    'startDate': false,
-    'endDate': false,
+    'discount': true, // 🔥 NOUVEAU : Déjà valide au départ
+    'startDate': true, // 🔥 NOUVEAU : Déjà valide au départ
+    'endDate': true, // 🔥 NOUVEAU : Déjà valide au départ
   };
 
   void validateFields(StateSetter setModalState) {
@@ -96,24 +102,23 @@ void showCreatePromotionModal({
     });
   }
 
-  // 🔥 NOUVELLE FONCTION : Formatage des dates sans problème de fuseau horaire
+  // Formatage des dates sans problème de fuseau horaire
   String formatDateForApi(DateTime date) {
-    // Format YYYY-MM-DD sans conversion UTC
     final year = date.year.toString();
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
   }
 
-  Future<void> submitPromotion(StateSetter setModalState, BuildContext innerContext) async {
+  // 🔥 NOUVEAU : Fonction pour modifier la promotion
+  Future<void> updatePromotion(StateSetter setModalState, BuildContext innerContext) async {
     validateFields(setModalState);
     if (errors.values.any((e) => e != null)) return;
 
-    // 🔥 CORRECTION : Utiliser la nouvelle fonction de formatage des dates
     final promotionData = {
       'discount_percentage': double.parse(discountController.text.trim()),
-      'start_date': formatDateForApi(startDate!), // 🔥 NOUVEAU : Sans problème de fuseau horaire
-      'end_date': formatDateForApi(endDate!),     // 🔥 NOUVEAU : Sans problème de fuseau horaire
+      'start_date': formatDateForApi(startDate!),
+      'end_date': formatDateForApi(endDate!),
     };
 
     setModalState(() {
@@ -122,27 +127,41 @@ void showCreatePromotionModal({
     });
 
     try {
-      // 🔍 DEBUG : Afficher les dates envoyées
-      if (kDebugMode) {
-        print('📅 Dates envoyées à l\'API:');
-        print('   - Date début sélectionnée: ${startDate!.toLocal()}');
-        print('   - Date fin sélectionnée: ${endDate!.toLocal()}');
-        print('   - Date début API: ${promotionData['start_date']}');
-        print('   - Date fin API: ${promotionData['end_date']}');
+      // 🔥 NOUVEAU : Récupérer le token d'authentification
+      final token = await TokenService.getAuthToken();
+
+      if (token == null) {
+        setModalState(() {
+          errorMessage = "Erreur d'authentification. Veuillez vous reconnecter.";
+          isLoading = false;
+        });
+        return;
       }
 
-      // Utiliser la nouvelle URL avec salon_id et service_id
-      final url = 'https://www.hairbnb.site/api/salon/$salonId/service/$serviceId/promotion/';
+      if (kDebugMode) {
+        print('📝 Modification promotion:');
+        print('   - ID Promotion: ${promotion.id}');
+        print('   - Salon ID: $salonId');
+        print('   - Service ID: $serviceId');
+        print('   - Nouvelles données: $promotionData');
+        print('   - Token présent: ${token.isNotEmpty}');
+      }
 
-      final response = await http.post(
+      final url = 'https://www.hairbnb.site/api/salon/$salonId/service/$serviceId/promotion/${promotion.id}/';
+
+      // 🔥 CORRIGÉ : Ajout du token d'authentification dans les headers
+      final response = await http.put(
         Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // ✅ Token ajouté !
+        },
         body: json.encode(promotionData),
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 200) {
         if (kDebugMode) {
-          print('✅ Promotion créée avec succès !');
+          print('✅ Promotion modifiée avec succès !');
         }
 
         showDialog(
@@ -163,7 +182,7 @@ void showCreatePromotionModal({
                 children: [
                   Icon(Icons.check_circle, color: successGreen, size: 60),
                   const SizedBox(height: 10),
-                  const Text("Promotion ajoutée !", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text("Promotion modifiée !", style: TextStyle(fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -173,11 +192,32 @@ void showCreatePromotionModal({
         Future.delayed(const Duration(milliseconds: 1500), () {
           Navigator.of(innerContext).pop();
           Navigator.of(innerContext).pop(true);
-          onPromoAdded();
+          onPromoUpdated();
         });
 
+      } else if (response.statusCode == 401) {
+        // 🔥 NOUVEAU : Gestion spécifique de l'erreur d'authentification
+        if (kDebugMode) {
+          print('❌ Erreur 401: Token invalide ou expiré');
+        }
+
+        // Essayer de rafraîchir le token
+        final newToken = await TokenService.getAuthToken(forceRefresh: true);
+
+        if (newToken != null) {
+          setModalState(() {
+            errorMessage = "Session expirée. Veuillez réessayer.";
+            isLoading = false;
+          });
+        } else {
+          setModalState(() {
+            errorMessage = "Authentification échouée. Veuillez vous reconnecter.";
+            isLoading = false;
+          });
+        }
+
       } else if (response.statusCode == 400) {
-        String errorText = "Impossible de créer la promotion.";
+        String errorText = "Impossible de modifier la promotion.";
         try {
           final errorData = json.decode(utf8.decode(response.bodyBytes));
           if (kDebugMode) {
@@ -212,7 +252,7 @@ void showCreatePromotionModal({
           print('❌ Erreur 404: Ressource non trouvée');
         }
         setModalState(() {
-          errorMessage = "Service ou salon introuvable (404). Vérifiez les IDs.";
+          errorMessage = "Promotion, service ou salon introuvable (404).";
           isLoading = false;
         });
 
@@ -228,7 +268,7 @@ void showCreatePromotionModal({
 
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('❌ Exception lors de la création: $e');
+        print('❌ Exception lors de la modification: $e');
         print('📍 StackTrace: $stackTrace');
       }
 
@@ -274,8 +314,29 @@ void showCreatePromotionModal({
                     ),
                   ),
 
-                  const Text("Ajouter une promotion",
+                  const Text("Modifier la promotion", // 🔥 NOUVEAU : Titre modifié
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+
+                  // 🔥 NOUVEAU : Afficher les infos de la promotion actuelle
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 15),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: primaryViolet.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: primaryViolet.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('📋 Promotion actuelle:', style: TextStyle(fontWeight: FontWeight.bold, color: primaryViolet)),
+                        const SizedBox(height: 8),
+                        Text('• Réduction: ${promotion.pourcentage.toStringAsFixed(0)}%', style: TextStyle(color: primaryViolet.withOpacity(0.8))),
+                        Text('• Période: ${formatDateForApi(promotion.dateDebut)} → ${formatDateForApi(promotion.dateFin)}', style: TextStyle(color: primaryViolet.withOpacity(0.8))),
+                        Text('• Statut: ${promotion.getCurrentStatus() == 'active' ? 'Active' : promotion.getCurrentStatus() == 'future' ? 'À venir' : 'Expirée'}', style: TextStyle(color: primaryViolet.withOpacity(0.8))),
+                      ],
+                    ),
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -299,12 +360,12 @@ void showCreatePromotionModal({
                   ListTile(
                     title: Text(startDate == null
                         ? "Choisir une date de début"
-                        : "Début : ${formatDateForApi(startDate!)}"), // 🔥 AMÉLIORATION : Affichage cohérent
+                        : "Début : ${formatDateForApi(startDate!)}"),
                     trailing: Icon(Icons.calendar_today, color: primaryViolet),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: innerContext,
-                        initialDate: DateTime.now(),
+                        initialDate: startDate ?? DateTime.now(),
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 365)),
                       );
@@ -321,12 +382,12 @@ void showCreatePromotionModal({
                   ListTile(
                     title: Text(endDate == null
                         ? "Choisir une date de fin"
-                        : "Fin : ${formatDateForApi(endDate!)}"), // 🔥 AMÉLIORATION : Affichage cohérent
+                        : "Fin : ${formatDateForApi(endDate!)}"),
                     trailing: Icon(Icons.calendar_today, color: primaryViolet),
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: innerContext,
-                        initialDate: startDate ?? DateTime.now(),
+                        initialDate: endDate ?? startDate ?? DateTime.now(),
                         firstDate: startDate ?? DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 730)),
                       );
@@ -370,7 +431,7 @@ void showCreatePromotionModal({
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : () => submitPromotion(setModalState, innerContext),
+                      onPressed: isLoading ? null : () => updatePromotion(setModalState, innerContext),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryViolet,
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -378,7 +439,7 @@ void showCreatePromotionModal({
                       ),
                       child: isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Créer la promotion", style: TextStyle(fontWeight: FontWeight.bold)),
+                          : const Text("Modifier la promotion", style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

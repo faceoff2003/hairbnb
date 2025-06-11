@@ -20,7 +20,6 @@ import 'services_pages_services/modals/add_service_modal.dart';
 import 'services_pages_services/services/add_to_cart_service.dart';
 import 'services_pages_services/services/delete_service.dart';
 
-// ✅ WRAPPER avec providers LOCAUX (CategoriesProvider + ServicesProvider)
 class ServicesListPage extends StatelessWidget {
   final String coiffeuseId;
   const ServicesListPage({super.key, required this.coiffeuseId});

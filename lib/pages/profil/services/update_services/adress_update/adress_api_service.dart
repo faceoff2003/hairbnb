@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../../../services/providers/user_service.dart';
+import '../../../../chat/chat_services/user_service.dart';
 
 
 class AddressApiService {

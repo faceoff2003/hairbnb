@@ -6,8 +6,11 @@ import 'package:provider/provider.dart';
 import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../services/providers/current_user_provider.dart';
+import '../../services/firebase_token/token_service.dart';
 import '../../widgets/bottom_nav_bar.dart';
+import '../ai_chat/coiffeuse_ai/coiffeuse_ai_conversations_list.dart';
 import '../ai_chat/widgets/ai_chat_wrapper.dart';
+import '../ai_chat/services/coiffeuse_ai_chat_service.dart';
 import '../commandes/coiffeuse_commande_page.dart';
 import '../horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
 import '../mes_commandes/mes_commandes_page.dart';
@@ -67,6 +70,31 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   String capitalize(String s) => s.isNotEmpty ? s[0].toUpperCase() + s.substring(1).toLowerCase() : "";
+
+  /// Vérifie si l'utilisateur est une coiffeuse propriétaire
+  bool _isCoiffeuseProprietaire(CurrentUser user) {
+    // Vérifier que c'est une coiffeuse (via type ou isCoiffeuseUser())
+    bool isCoiffeuse = user.isCoiffeuseUser() ||
+        user.type?.toLowerCase() == 'coiffeuse' ||
+        (user.coiffeuse != null);
+
+    if (!isCoiffeuse) {
+      return false;
+    }
+
+    if (user.coiffeuse?.salon != null) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Vérifie si l'utilisateur est admin
+  bool _isAdmin(CurrentUser user) {
+    return user.role?.toLowerCase() == 'admin' ||
+        user.role?.toLowerCase() == 'administrateur';
+
+  }
 
   void _editField(String fieldName, String currentValue) {
     // Pour le numéro de téléphone, utiliser le nouveau widget dédié
@@ -129,71 +157,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-
-  // void _editField(String fieldName, String currentValue) {
-  //   final TextEditingController fieldController = TextEditingController(text: currentValue);
-  //
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  //         title: Text("Modifier $fieldName", style: TextStyle(color: primaryViolet, fontWeight: FontWeight.bold)),
-  //         content: TextField(
-  //           controller: fieldController,
-  //           decoration: InputDecoration(
-  //             hintText: "Nouvelle valeur pour $fieldName",
-  //             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-  //             focusedBorder: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(10),
-  //               borderSide: BorderSide(color: primaryViolet, width: 2),
-  //             ),
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.pop(context),
-  //             style: TextButton.styleFrom(foregroundColor: Colors.grey),
-  //             child: const Text("Annuler"),
-  //           ),
-  //           TextButton(
-  //             onPressed: () async {
-  //               Navigator.pop(context);
-  //
-  //               // Vérifier que le champ a changé et n'est pas vide
-  //               if (fieldController.text.isNotEmpty && fieldController.text != currentValue) {
-  //
-  //                 // Si c'est le numéro de téléphone, utiliser le service spécifique
-  //                 if (fieldName == "Téléphone") {
-  //                   await _updatePhoneNumber(fieldController.text);
-  //                 }
-  //                 // Sinon utiliser la méthode générique
-  //                 else {
-  //                   await _updateUserProfileField(widget.currentUser.uuid, {fieldName: fieldController.text});
-  //                 }
-  //               }
-  //             },
-  //             style: TextButton.styleFrom(foregroundColor: primaryViolet),
-  //             child: const Text("Sauvegarder"),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-
-
-
   Future<void> _updateUserProfileField(String userUuid, Map<String, dynamic> updatedData) async {
     setState(() {
       isLoading = true;
     });
 
-
     setState(() {
       isLoading = false;
     });
-
   }
 
   void _editAddress(Adresse adresse) {
@@ -216,119 +187,154 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  // void _editAddress(Adresse adresse) {
-  //   // Contrôleurs pour chaque champ d'adresse
-  //   final numeroController = TextEditingController(text: adresse.numero ?? '');
-  //   //final boiteController = TextEditingController(text: adresse.boitePostale ?? '');
-  //   final rueController = TextEditingController(text: adresse.rue?.nomRue ?? '');
-  //   final communeController = TextEditingController(text: adresse.rue?.localite?.commune ?? '');
-  //   final codePostalController = TextEditingController(text: adresse.rue?.localite?.codePostal ?? '');
-  //
+  /// Navigation vers l'Assistant IA Coiffeuses
+  Future<void> _navigateToCoiffeuseAI(CurrentUser user) async {
+    // Afficher un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: primaryViolet),
+            SizedBox(height: 16),
+            Text(
+              'Initialisation de votre assistant IA...',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Récupérer le token Firebase
+      final token = await TokenService.getAuthToken();
+
+      if (token == null) {
+        Navigator.pop(context); // Fermer le loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur d\'authentification'),
+            backgroundColor: errorRed,
+          ),
+        );
+        return;
+      }
+
+      // Initialiser le service avec votre URL backend
+      final chatService = CoiffeuseAIChatService(
+        baseUrl: 'https://www.hairbnb.site/api',
+        token: token,
+      );
+
+      Navigator.pop(context); // Fermer le loading
+
+      // ✅ NOUVELLE APPROCHE - Passer le service directement
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CoiffeuseConversationsListPage(
+            currentUser: user,
+            chatService: chatService,
+          ),
+        ),
+      );
+    } catch (e) {
+      Navigator.pop(context); // Fermer le loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de l\'initialisation : $e'),
+          backgroundColor: errorRed,
+        ),
+      );
+    }
+  }
+
+  // Future<void> _navigateToCoiffeuseAI(CurrentUser user) async {
+  //   // Afficher un indicateur de chargement
   //   showDialog(
   //     context: context,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  //         title: Text("Modifier l'adresse", style: TextStyle(color: primaryViolet, fontWeight: FontWeight.bold)),
-  //         content: SingleChildScrollView(
-  //           child: Column(
-  //             mainAxisSize: MainAxisSize.min,
-  //             children: [
-  //               // Champs pour numéro
-  //               TextField(
-  //                 controller: numeroController,
-  //                 decoration: InputDecoration(
-  //                   labelText: "Numéro",
-  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-  //                   focusedBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(10),
-  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
-  //                   ),
-  //                 ),
-  //               ),
-  //              const SizedBox(height: 8),
-  //               //const SizedBox(height: 8),
-  //               // Champs pour rue
-  //               TextField(
-  //                 controller: rueController,
-  //                 decoration: InputDecoration(
-  //                   labelText: "Rue",
-  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-  //                   focusedBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(10),
-  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
-  //                   ),
-  //                 ),
-  //               ),
-  //               const SizedBox(height: 8),
-  //               // Champs pour commune
-  //               TextField(
-  //                 controller: communeController,
-  //                 decoration: InputDecoration(
-  //                   labelText: "Commune",
-  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-  //                   focusedBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(10),
-  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
-  //                   ),
-  //                 ),
-  //               ),
-  //               const SizedBox(height: 8),
-  //               // Champs pour code postal
-  //               TextField(
-  //                 controller: codePostalController,
-  //                 decoration: InputDecoration(
-  //                   labelText: "Code postal",
-  //                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-  //                   focusedBorder: OutlineInputBorder(
-  //                     borderRadius: BorderRadius.circular(10),
-  //                     borderSide: BorderSide(color: primaryViolet, width: 2),
-  //                   ),
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.pop(context),
-  //             style: TextButton.styleFrom(foregroundColor: Colors.grey),
-  //             child: const Text("Annuler"),
-  //           ),
-  //           TextButton(
-  //             onPressed: () {
-  //               // Préparer les données d'adresse
-  //               Map<String, dynamic> addressData = {
-  //                 'numero': numeroController.text,
-  //                 //'boitePostale': boiteController.text,
-  //                 'rue': {
-  //                   'nomRue': rueController.text,
-  //                   'localite': {
-  //                     'commune': communeController.text,
-  //                     'codePostal': codePostalController.text
-  //                   }
-  //                 }
-  //               };
-  //
-  //               Navigator.pop(context);
-  //
-  //               // Appeler le service pour mettre à jour l'adresse
-  //               _updateUserAddress(addressData);
-  //             },
-  //             style: TextButton.styleFrom(foregroundColor: primaryViolet),
-  //             child: const Text("Sauvegarder"),
+  //     barrierDismissible: false,
+  //     builder: (context) => Center(
+  //       child: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           CircularProgressIndicator(color: primaryViolet),
+  //           SizedBox(height: 16),
+  //           Text(
+  //             'Initialisation de votre assistant IA...',
+  //             style: TextStyle(color: Colors.white),
   //           ),
   //         ],
-  //       );
-  //     },
+  //       ),
+  //     ),
   //   );
+  //
+  //   try {
+  //     // Récupérer le token Firebase
+  //     final token = await TokenService.getAuthToken();
+  //
+  //     if (token == null) {
+  //       Navigator.pop(context); // Fermer le loading
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text('Erreur d\'authentification'),
+  //           backgroundColor: errorRed,
+  //         ),
+  //       );
+  //       return;
+  //     }
+  //
+  //     // Initialiser le service avec votre URL backend
+  //     final chatService = CoiffeuseAIChatService(
+  //       baseUrl: 'https://www.hairbnb.site/api',
+  //       token: token,
+  //     );
+  //
+  //     // Créer le provider
+  //     final chatProvider = CoiffeuseAIChatProvider(chatService);
+  //
+  //     Navigator.pop(context);
+  //
+  //     // Naviguer vers la page des conversations
+  //     Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (context) => ChangeNotifierProvider<CoiffeuseAIChatProvider>(
+  //           create: (context) => CoiffeuseAIChatProvider(chatService),
+  //           child: CoiffeuseConversationsListPage(currentUser: user),
+  //         ),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     Navigator.pop(context); // Fermer le loading
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Erreur lors de l\'initialisation : $e'),
+  //         backgroundColor: errorRed,
+  //       ),
+  //     );
+  //   }
   // }
 
   @override
   Widget build(BuildContext context) {
-    // final CurrentUser user = widget.currentUser;
     final CurrentUser user = Provider.of<CurrentUserProvider>(context).currentUser ?? widget.currentUser;
 
+    // DEBUG TEMPORAIRE - à retirer après test
+    if (kDebugMode) {
+      print("=== DEBUG PROFIL ===");
+      print("user.type: ${user.type}");
+      print("user.role: ${user.role}");
+      print("user.isCoiffeuseUser(): ${user.isCoiffeuseUser()}");
+      print("user.coiffeuse: ${user.coiffeuse}");
+      print("user.coiffeuse?.salon: ${user.coiffeuse?.salon}");
+      print("_isAdmin(user): ${_isAdmin(user)}");
+      print("_isCoiffeuseProprietaire(user): ${_isCoiffeuseProprietaire(user)}");
+      print("===================");
+    }
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -434,7 +440,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       _infoTile(Icons.email, "Email", user.email),
                       _infoTile(Icons.phone, "Téléphone", user.numeroTelephone),
                       if (user.adresse != null) ...[
-
                         Consumer<CurrentUserProvider>(
                           builder: (context, userProvider, child) {
                             final currentAddr = userProvider.currentUser?.adresse ?? user.adresse;
@@ -463,8 +468,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     child: Column(
                       children: [
                         _infoTile(Icons.business, "Dénomination Sociale", user.coiffeuse!.denominationSociale ?? ''),
-                        _infoTile(Icons.money, "TVA", user.coiffeuse!.tva ?? ''),
-                        _infoTile(Icons.map, "Position", user.coiffeuse!.position ?? ''),
+                        // _infoTile(Icons.money, "TVA", user.coiffeuse!.tva ?? ''),
+                        // _infoTile(Icons.map, "Position", user.coiffeuse!.position ?? ''),
                         if (user.coiffeuse!.salon != null)
                           _infoTile(Icons.store, "Nom du salon", user.coiffeuse!.salon!.nomSalon ?? ''),
                       ],
@@ -615,11 +620,22 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             );
                           },
                         ),
+                      ],
 
-                        // Assistant IA
+                      // Assistant IA pour Coiffeuses Propriétaires
+                      if (_isCoiffeuseProprietaire(user))
+                        _actionTile(
+                          Icons.auto_awesome,
+                          "🤖 Mon Assistant IA Personnel",
+                              () => _navigateToCoiffeuseAI(user),
+                          isHighlighted: true,
+                        ),
+
+                      // Assistant IA pour Admins
+                      if (_isAdmin(user))
                         _actionTile(
                           Icons.chat_bubble,
-                          "Assistant IA",
+                          "🔧 Assistant IA Admin",
                               () {
                             Navigator.push(
                               context,
@@ -630,7 +646,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           },
                           isHighlighted: true,
                         ),
-                      ],
 
                       // Mes commandes (pour tous)
                       _actionTile(
@@ -771,13 +786,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     String addressLine1 = '';
     String addressLine2 = '';
 
-    // // Ligne 1: Numéro + boîte postale (si disponible) + rue
+    // Ligne 1: Numéro + rue
     if (adresse.numero != null && adresse.numero!.isNotEmpty) {
-    addressLine1 += adresse.numero!;
-    // if (adresse.boitePostale != null && adresse.boitePostale!.isNotEmpty) {
-     // addressLine1 += '/' + adresse.boitePostale!;
-       //}
-     }
+      addressLine1 += adresse.numero!;
+    }
 
     // Ajouter le nom de la rue
     if (adresse.rue != null && adresse.rue!.nomRue != null && adresse.rue!.nomRue!.isNotEmpty) {

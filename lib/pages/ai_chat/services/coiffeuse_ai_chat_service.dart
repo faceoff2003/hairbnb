@@ -1,7 +1,7 @@
 ﻿// lib/pages/ai_chat/services/coiffeuse_ai_chat_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:hairbnb/models/ai_chat.dart';
+import '../../../models/ai_chat_coiffeuse.dart';
 
 class CoiffeuseAIChatService {
   final String baseUrl;
@@ -24,7 +24,7 @@ class CoiffeuseAIChatService {
   };
 
   /// Récupérer toutes les conversations de la coiffeuse
-  Future<List<AIConversation>> getConversations() async {
+  Future<List<CoiffeuseConversationItem>> getConversations() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/coiffeuse/ai/conversations/'),
@@ -35,8 +35,8 @@ class CoiffeuseAIChatService {
         final String decodedResponse = utf8.decode(response.bodyBytes);
         final List<dynamic> jsonData = json.decode(decodedResponse);
 
-        // Le backend retourne directement une liste, pas un objet avec conversations
-        return jsonData.map((item) => AIConversation.fromJson(item)).toList();
+        // Le backend retourne directement une liste de conversations
+        return jsonData.map((item) => CoiffeuseConversationItem.fromJson(item)).toList();
       } else {
         throw Exception('Erreur lors de la récupération des conversations: ${response.body}');
       }
@@ -47,7 +47,7 @@ class CoiffeuseAIChatService {
   }
 
   /// Récupérer les messages d'une conversation spécifique
-  Future<AIConversation> getConversationMessages(int? conversationId) async {
+  Future<CoiffeuseConversationDetail> getConversationMessages(int? conversationId) async {
     print("getConversationMessages appelé avec id: $conversationId");
 
     if (conversationId == null) {
@@ -66,12 +66,7 @@ class CoiffeuseAIChatService {
         final String decodedResponse = utf8.decode(response.bodyBytes);
         final Map<String, dynamic> jsonData = json.decode(decodedResponse);
 
-        // Vérifier si l'ID est présent dans la réponse
-        if (!jsonData.containsKey('id')) {
-          print("ATTENTION: La réponse JSON ne contient pas de champ 'id'");
-          jsonData['id'] = conversationId; // Ajouter l'ID manuellement
-        }
-        return AIConversation.fromJson(jsonData);
+        return CoiffeuseConversationDetail.fromJson(jsonData);
       } else {
         print("Erreur HTTP ${response.statusCode}: ${response.body}");
         throw Exception('Erreur lors de la récupération des messages: ${response.body}');
@@ -83,7 +78,7 @@ class CoiffeuseAIChatService {
   }
 
   /// Créer une nouvelle conversation
-  Future<AIConversation> createConversation() async {
+  Future<CoiffeuseConversationCreate> createConversation() async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/coiffeuse/ai/conversations/create/'),
@@ -94,16 +89,7 @@ class CoiffeuseAIChatService {
         final String decodedResponse = utf8.decode(response.bodyBytes);
         final Map<String, dynamic> jsonData = json.decode(decodedResponse);
 
-        // Le backend retourne {id: ..., created_at: ...}
-        if (jsonData['id'] == null) {
-          print("ERREUR: La réponse de création de conversation ne contient pas d'ID");
-          throw Exception('ID de conversation manquant dans la réponse');
-        }
-
-        return AIConversation(
-          id: jsonData['id'],
-          createdAt: DateTime.parse(jsonData['created_at'] ?? DateTime.now().toIso8601String()),
-        );
+        return CoiffeuseConversationCreate.fromJson(jsonData);
       } else {
         print("Erreur HTTP ${response.statusCode} lors de la création de conversation: ${response.body}");
         throw Exception('Erreur lors de la création de la conversation: ${response.body}');
@@ -115,32 +101,27 @@ class CoiffeuseAIChatService {
   }
 
   /// Envoyer un message et obtenir une réponse de l'IA
-  Future<SendMessageResponse> sendMessage({
+  Future<CoiffeuseMessageResponse> sendMessage({
     int? conversationId,
     required String message,
   }) async {
     try {
+      final request = CoiffeuseMessageRequest(
+        conversationId: conversationId,
+        message: message,
+      );
+
       final response = await http.post(
         Uri.parse('$baseUrl/coiffeuse/ai/messages/send/'),
         headers: _headers,
-        body: json.encode({
-          'conversation_id': conversationId,
-          'message': message,
-        }),
+        body: json.encode(request.toJson()),
       );
 
       if (response.statusCode == 200) {
         final String responseBody = utf8.decode(response.bodyBytes);
         final Map<String, dynamic> jsonData = json.decode(responseBody);
 
-        // Adapter la réponse du backend coiffeuse au format attendu
-        return SendMessageResponse(
-          conversationId: jsonData['conversation_id'],
-          userMessageId: 0, // Le backend coiffeuse ne retourne pas ces IDs
-          aiMessageId: 0,   // Le backend coiffeuse ne retourne pas ces IDs
-          aiResponse: jsonData['ai_response'],
-          tokens: jsonData['tokens'] ?? {'input': 0, 'output': 0, 'total': 0},
-        );
+        return CoiffeuseMessageResponse.fromJson(jsonData);
       } else {
         throw Exception('Erreur lors de l\'envoi du message: ${response.body}');
       }

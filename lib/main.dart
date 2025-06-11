@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hairbnb/pages/ai_chat/providers/ai_chat_provider.dart';
 import 'package:hairbnb/pages/ai_chat/services/ai_chat_service.dart';
+import 'package:hairbnb/pages/ai_chat/services/coiffeuse_ai_chat_service.dart';
 import 'package:hairbnb/pages/home_page.dart';
 import 'package:hairbnb/services/providers/cart_provider.dart';
+import 'package:hairbnb/services/providers/coiffeuse_ai_chat_provider.dart';
 import 'package:hairbnb/services/providers/disponibilites_provider.dart';
 import 'package:hairbnb/services/routes_services/route_service.dart';
 import 'firebase_options.dart';
@@ -55,9 +57,16 @@ void main() async {
         ChangeNotifierProvider(create: (_) => DisponibilitesProvider()),
         ChangeNotifierProvider(create: (context) => AIChatProvider(AIChatService(
               baseUrl: 'https://www.hairbnb.site/api',
-              token: '', // Vous pouvez initialiser avec une chaîne vide et mettre à jour plus tard
+              token: '',
             ),
           ),
+        ),
+        ChangeNotifierProvider(create: (context) => CoiffeuseAIChatProvider(
+          CoiffeuseAIChatService(
+            baseUrl: 'https://www.hairbnb.site/api',
+            token: '',
+          ),
+        ),
         ),
       ],
       //child: const AppRoot(),
