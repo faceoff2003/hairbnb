@@ -1,4 +1,5 @@
 ﻿// lib/pages/ai_chat/coiffeuse/coiffeuse_conversations_list_page.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hairbnb/pages/ai_chat/services/coiffeuse_ai_chat_service.dart';
 import 'package:provider/provider.dart';
@@ -21,10 +22,10 @@ class CoiffeuseConversationsListPage extends StatefulWidget {
 
 class _CoiffeuseConversationsListPageState extends State<CoiffeuseConversationsListPage> {
   // Couleurs spécifiques aux coiffeuses
-  static const Color primaryCoiffeuseColor = Color(0xFFE91E63); // Rose vibrant
-  static const Color secondaryCoiffeuseColor = Color(0xFF9C27B0); // Violet
-  static const Color accentCoiffeuseColor = Color(0xFFFFC107); // Doré
-  static const Color lightCoiffeuseColor = Color(0xFFFCE4EC); // Rose très clair
+// Rose vibrant
+// Violet
+// Doré
+// Rose très clair
 
   @override
   Widget build(BuildContext context) {
@@ -667,11 +668,15 @@ class _ConversationsContentState extends State<_ConversationsContent> {
 
         // ✅ Double vérification que activeConversation est définie
         if (provider.activeConversation != null) {
-          print("✅ Conversation active définie, navigation vers le chat");
+          if (kDebugMode) {
+            print("✅ Conversation active définie, navigation vers le chat");
+          }
           _navigateToChatPage(context);
         } else {
           // ✅ Si activeConversation n'est pas définie, la définir manuellement
-          print("⚠️ activeConversation non définie, définition manuelle");
+          if (kDebugMode) {
+            print("⚠️ activeConversation non définie, définition manuelle");
+          }
           provider.setActiveConversation(newConversation.id);
 
           // Attendre que les messages soient chargés
@@ -688,7 +693,9 @@ class _ConversationsContentState extends State<_ConversationsContent> {
         );
       }
     } catch (e) {
-      print("❌ Erreur dans _startNewConversation: $e");
+      if (kDebugMode) {
+        print("❌ Erreur dans _startNewConversation: $e");
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erreur: $e'),
@@ -708,7 +715,9 @@ class _ConversationsContentState extends State<_ConversationsContent> {
     // ✅ IMPORTANT: Capturer le provider AVANT la navigation, pas dans le builder
     final chatProvider = Provider.of<CoiffeuseAIChatProvider>(context, listen: false);
 
-    print("🚀 Navigation - Provider capturé: ${chatProvider.activeConversation?.id}");
+    if (kDebugMode) {
+      print("🚀 Navigation - Provider capturé: ${chatProvider.activeConversation?.id}");
+    }
 
     Navigator.push(
       context,

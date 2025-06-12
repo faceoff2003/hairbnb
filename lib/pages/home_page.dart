@@ -3,6 +3,9 @@ import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import '../services/my_drawer_service/hairbnb_scaffold.dart';
 import '../services/providers/current_user_provider.dart';
+import 'avis/mes_avis_en_attente_page.dart';
+import 'avis/services/debug_avis_screen.dart';
+import 'avis/widgets/avis_badge_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,40 +17,123 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
+  /// 🔔 Fonction appelée quand on clique sur le badge d'avis
+  void _navigateToAvisEnAttente() {
+    print("🔔 Navigation vers avis en attente");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MesAvisEnAttenteScreen(),
+      ),
+    ).then((result) {
+      if (result == true) {
+        setState(() {});
+      }
+    });
+  }
+
+  /// 🧪 Navigation vers l'écran de debug
+  void _navigateToDebug() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DebugAvisScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
 
     return HairbnbScaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
-              style: const TextStyle(fontSize: 20),
+      body: Column(
+        children: [
+          // 🎯 BADGE EN HAUT (s'affiche seulement s'il y a des avis)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: AvisBadgeText(
+              onTap: _navigateToAvisEnAttente,
             ),
-            const SizedBox(height: 20),
-            // ElevatedButton.icon(
-            //   onPressed: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => RdvCoiffeusePage()),
-            //     );
-            //   },
-            //   icon: const Icon(Icons.calendar_today),
-            //   label: const Text("Voir mes RDVs"),
-            //   style: ElevatedButton.styleFrom(
-            //     backgroundColor: Colors.orange,
-            //     foregroundColor: Colors.white,
-            //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            //     shape: RoundedRectangleBorder(
-            //       borderRadius: BorderRadius.circular(12),
-            //     ),
-            //   ),
-            // ),
-          ],
-        ),
+          ),
+
+          // 🎯 CONTENU PRINCIPAL (centré)
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 🧪 BOUTON DEBUG TEMPORAIRE
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    margin: EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      border: Border.all(color: Colors.red[200]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.bug_report, color: Colors.red, size: 30),
+                        SizedBox(height: 8),
+                        Text(
+                          '🚨 PROBLÈME DÉTECTÉ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red[700],
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Erreur: "No TblClient matches"',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red[600],
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _navigateToDebug,
+                          icon: Icon(Icons.build),
+                          label: Text('🧪 DIAGNOSTIQUER'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Bouton normal pour tester
+                  ElevatedButton.icon(
+                    onPressed: _navigateToAvisEnAttente,
+                    icon: Icon(Icons.rate_review),
+                    label: Text("Voir mes avis en attente"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
@@ -67,14 +153,20 @@ class _HomePageState extends State<HomePage> {
 
 
 
+
+
+
+
 // import 'package:flutter/material.dart';
 // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 // import 'package:provider/provider.dart';
 // import '../services/my_drawer_service/hairbnb_scaffold.dart';
 // import '../services/providers/current_user_provider.dart';
+// import 'avis/mes_avis_en_attente_page.dart';
+// import 'avis/widgets/avis_badge_widget.dart';
 //
 // class HomePage extends StatefulWidget {
-//   const HomePage({Key? key}) : super(key: key);
+//   const HomePage({super.key});
 //
 //   @override
 //   _HomePageState createState() => _HomePageState();
@@ -83,109 +175,73 @@ class _HomePageState extends State<HomePage> {
 // class _HomePageState extends State<HomePage> {
 //   int _currentIndex = 0;
 //
-//   @override
-//   Widget build(BuildContext context) {
-//     return HairbnbScaffold(
-//       body: Center(
-//         child: Text("Bienvenue, ${Provider.of<CurrentUserProvider>(context).currentUser?.nom ?? ''} ${Provider.of<CurrentUserProvider>(context).currentUser?.prenom ?? ''}"),
+//   /// 🔔 Fonction appelée quand on clique sur le badge d'avis
+//   void _navigateToAvisEnAttente() {
+//     print("🔔 Navigation vers avis en attente");
+//
+//     // 🎯 Navigation vers l'écran des avis en attente
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => MesAvisEnAttenteScreen(),
 //       ),
-//       bottomNavigationBar: BottomNavBar(
-//         currentIndex: _currentIndex,
-//         onTap: (index) {
-//           setState(() {
-//             _currentIndex = index;
-//           });
-//         },
-//       ),
-//     );
+//     ).then((result) {
+//       // 🔄 Optionnel: Recharger le badge quand on revient
+//       if (result == true) {
+//         setState(() {}); // Force le rebuild du badge
+//       }
+//     });
 //   }
-// }
-
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// import 'package:provider/provider.dart';
-// import '../services/providers/current_user_provider.dart';
-// import '../widgets/custom_app_bar.dart';
-//
-// class HomePage extends StatefulWidget {
-//   const HomePage({Key? key}) : super(key: key);
-//
-//   @override
-//   _HomePageState createState() => _HomePageState();
-// }
-//
-// class _HomePageState extends State<HomePage> {
-//   int _currentIndex = 0;
 //
 //   @override
 //   Widget build(BuildContext context) {
 //     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
 //
-//     return Scaffold(
-//       appBar: const CustomAppBar(),
-//       body: Center(
-//         child: currentUser == null
-//             ? const CircularProgressIndicator()
-//             : Text("Bienvenue, ${currentUser.nom} ${currentUser.prenom}"),
-//       ),
-//       bottomNavigationBar: BottomNavBar(
-//         currentIndex: _currentIndex,
-//         onTap: (index) {
-//           setState(() {
-//             _currentIndex = index;
-//           });
-//         },
-//       ),
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:flutter/material.dart';
-// import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// import 'package:hairbnb/models/current_user.dart';
+//     return HairbnbScaffold(
+//       body: Column(
+//         children: [
+//           // 🎯 BADGE EN HAUT (s'affiche seulement s'il y a des avis)
+//           Container(
+//             width: double.infinity,
+//             padding: const EdgeInsets.all(16),
+//             child: AvisBadgeText(
+//               onTap: _navigateToAvisEnAttente, // 🔗 Connecté à la vraie navigation
+//             ),
+//           ),
 //
-// import '../widgets/custom_app_bar.dart';
+//           // 🎯 CONTENU PRINCIPAL (centré)
+//           Expanded(
+//             child: Center(
+//               child: Column(
+//                 mainAxisAlignment: MainAxisAlignment.center,
+//                 children: [
+//                   Text(
+//                     "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
+//                     style: const TextStyle(fontSize: 20),
+//                   ),
+//                   const SizedBox(height: 20),
 //
-// class HomePage extends StatefulWidget {
-//   const HomePage({Key? key}) : super(key: key);
+//                   // 🎯 Optionnel: Bouton de test pour aller directement aux avis
+//                   ElevatedButton.icon(
+//                     onPressed: _navigateToAvisEnAttente,
+//                     icon: Icon(Icons.rate_review),
+//                     label: Text("Voir mes avis en attente"),
+//                     style: ElevatedButton.styleFrom(
+//                       backgroundColor: Colors.orange,
+//                       foregroundColor: Colors.white,
+//                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                     ),
+//                   ),
 //
-//   @override
-//   _HomePageState createState() => _HomePageState();
-// }
-//
-// class _HomePageState extends State<HomePage> {
-//   int _currentIndex = 0;
-//   CurrentUser? currentUser;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: CustomAppBar(
-//         onUserLoaded: (user) {
-//           setState(() {
-//             currentUser = user;
-//           });
-//         },
-//       ),
-//       body: Center(
-//         child: currentUser == null
-//             ? const CircularProgressIndicator()
-//             : Text("Bienvenue, ${currentUser!.nom} ${currentUser!.prenom}"),
+//                   // Vos autres widgets...
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ],
 //       ),
 //       bottomNavigationBar: BottomNavBar(
 //         currentIndex: _currentIndex,
@@ -203,14 +259,16 @@ class _HomePageState extends State<HomePage> {
 //
 //
 //
+// // import 'package:flutter/foundation.dart';
 // // import 'package:flutter/material.dart';
 // // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // import 'package:http/http.dart' as http;
-// // import 'dart:convert';
-// // import 'package:firebase_auth/firebase_auth.dart';
+// // import 'package:provider/provider.dart';
+// // import '../services/my_drawer_service/hairbnb_scaffold.dart';
+// // import '../services/providers/current_user_provider.dart';
+// // import 'avis/widgets/avis_badge_widget.dart';
 // //
 // // class HomePage extends StatefulWidget {
-// //   const HomePage({Key? key}) : super(key: key);
+// //   const HomePage({super.key});
 // //
 // //   @override
 // //   _HomePageState createState() => _HomePageState();
@@ -218,112 +276,80 @@ class _HomePageState extends State<HomePage> {
 // //
 // // class _HomePageState extends State<HomePage> {
 // //   int _currentIndex = 0;
-// //   Map<String, dynamic>? currentUser;
-// //   String userName = "Chargement...";
-// //   String userPhoto = "";
-// //   final FirebaseAuth _auth = FirebaseAuth.instance;
-// //   final String baseUrl = "http://192.168.0.248:8000"; // 🔥 URL de ton backend
 // //
-// //   @override
-// //   void initState() {
-// //     super.initState();
-// //     _fetchCurrentUser();
-// //   }
-// //
-// //   /// 🔹 Récupérer les infos utilisateur depuis Django
-// //   Future<void> _fetchCurrentUser() async {
-// //     try {
-// //       User? firebaseUser = _auth.currentUser;
-// //       if (firebaseUser == null) {
-// //         setState(() {
-// //           userName = "Utilisateur non connecté";
-// //           userPhoto = "";
-// //         });
-// //         return;
-// //       }
-// //
-// //       String firebaseUid = firebaseUser.uid; // Récupération de l'UUID Firebase
-// //
-// //       print("*************************************************");
-// //       print("🔥 UUID Firebase envoyé: $firebaseUid");
-// //       print("*************************************************");
-// //
-// //       final response = await http.get(
-// //         Uri.parse('$baseUrl/api/get_current_user/$firebaseUid/'),
-// //         headers: {'Content-Type': 'application/json'},
-// //       );
-// //
-// //       print("*************************************************");
-// //       print("Réponse de Django : ${response.body}");
-// //       print("*************************************************");
-// //
-// //       if (response.statusCode == 200) {
-// //         final data = json.decode(response.body);
-// //         setState(() {
-// //           currentUser = data['user']; // Stocke l'utilisateur
-// //           userName = "${currentUser!['nom']} ${currentUser!['prenom']} (${currentUser!['type']})";
-// //
-// //           // 🔥 Correction de l'image : Vérifier et compléter l'URL
-// //           String imagePath = currentUser!['photo_profil'] ?? "";
-// //           if (imagePath.isNotEmpty && !imagePath.startsWith("http")) {
-// //             userPhoto = "$baseUrl$imagePath"; // Ajoute l'URL complète
-// //           } else {
-// //             userPhoto = imagePath;
-// //           }
-// //         });
-// //       } else {
-// //         setState(() {
-// //           userName = "Utilisateur introuvable";
-// //           userPhoto = "";
-// //         });
-// //       }
-// //     } catch (error) {
-// //       print("Erreur de connexion : $error");
-// //       setState(() {
-// //         userName = "Erreur de connexion";
-// //         userPhoto = "";
-// //       });
+// //   /// 🔔 Fonction appelée quand on clique sur le badge d'avis
+// //   void _navigateToAvisEnAttente() {
+// //     if (kDebugMode) {
+// //       print("🔔 Navigation vers avis en attente");
 // //     }
+// //
+// //     // 🚧 TODO: Remplacer par votre navigation vers l'écran des avis en attente
+// //     ScaffoldMessenger.of(context).showSnackBar(
+// //       const SnackBar(
+// //         content: Text('Navigation vers avis en attente - À implémenter'),
+// //         backgroundColor: Colors.orange,
+// //         duration: Duration(seconds: 2),
+// //       ),
+// //     );
+// //
+// //     // Exemple de navigation (quand vous aurez créé l'écran) :
+// //     // Navigator.push(
+// //     //   context,
+// //     //   MaterialPageRoute(builder: (context) => MesAvisEnAttenteScreen()),
+// //     // );
 // //   }
 // //
 // //   @override
 // //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: Row(
-// //           children: [
-// //             if (userPhoto.isNotEmpty)
-// //               CircleAvatar(
-// //                 backgroundImage: NetworkImage(userPhoto),
-// //                 radius: 20,
-// //               )
-// //             else
-// //               const CircleAvatar(
-// //                 backgroundColor: Colors.grey,
-// //                 radius: 20,
-// //                 child: Icon(Icons.person, color: Colors.white),
-// //               ),
-// //             const SizedBox(width: 10),
-// //             RichText(
-// //               text: TextSpan(
-// //                 style: const TextStyle(fontSize: 18, color: Colors.black), // 🔥 Style principal
+// //     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
+// //
+// //     return HairbnbScaffold(
+// //       body: Column(
+// //         children: [
+// //           // 🎯 BADGE EN HAUT (s'affiche seulement s'il y a des avis)
+// //           Container(
+// //             width: double.infinity,
+// //             padding: const EdgeInsets.all(16),
+// //             child: AvisBadgeText(
+// //               onTap: _navigateToAvisEnAttente,
+// //             ),
+// //           ),
+// //
+// //           // 🎯 CONTENU PRINCIPAL (centré)
+// //           Expanded(
+// //             child: Center(
+// //               child: Column(
+// //                 mainAxisAlignment: MainAxisAlignment.center,
 // //                 children: [
-// //                   TextSpan(
-// //                     text: "${currentUser!['nom']} ${currentUser!['prenom']} ",
-// //                     style: const TextStyle(fontWeight: FontWeight.bold), // 🔥 Texte principal en gras
+// //                   Text(
+// //                     "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
+// //                     style: const TextStyle(fontSize: 20),
 // //                   ),
-// //                   TextSpan(
-// //                     text: "(${currentUser!['type']})",
-// //                     style: const TextStyle(fontSize: 14), // 🔥 Texte plus petit
-// //                   ),
+// //                   const SizedBox(height: 20),
+// //                   // ElevatedButton.icon(
+// //                   //   onPressed: () {
+// //                   //     Navigator.push(
+// //                   //       context,
+// //                   //       MaterialPageRoute(builder: (context) => RdvCoiffeusePage()),
+// //                   //     );
+// //                   //   },
+// //                   //   icon: const Icon(Icons.calendar_today),
+// //                   //   label: const Text("Voir mes RDVs"),
+// //                   //   style: ElevatedButton.styleFrom(
+// //                   //     backgroundColor: Colors.orange,
+// //                   //     foregroundColor: Colors.white,
+// //                   //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+// //                   //     shape: RoundedRectangleBorder(
+// //                   //       borderRadius: BorderRadius.circular(12),
+// //                   //     ),
+// //                   //   ),
+// //                   // ),
 // //                 ],
 // //               ),
 // //             ),
-// //           ],
-// //         ),
-// //         backgroundColor: Colors.orange,
+// //           ),
+// //         ],
 // //       ),
-// //       body: Center(child: Text("Bienvenue, $userName")),
 // //       bottomNavigationBar: BottomNavBar(
 // //         currentIndex: _currentIndex,
 // //         onTap: (index) {
@@ -343,16 +369,14 @@ class _HomePageState extends State<HomePage> {
 // //
 // //
 // //
-// //
-// //
 // // // import 'package:flutter/material.dart';
 // // // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // // import 'package:http/http.dart' as http;
-// // // import 'dart:convert';
-// // // import 'package:firebase_auth/firebase_auth.dart';
+// // // import 'package:provider/provider.dart';
+// // // import '../services/my_drawer_service/hairbnb_scaffold.dart';
+// // // import '../services/providers/current_user_provider.dart';
 // // //
 // // // class HomePage extends StatefulWidget {
-// // //   const HomePage({Key? key}) : super(key: key);
+// // //   const HomePage({super.key});
 // // //
 // // //   @override
 // // //   _HomePageState createState() => _HomePageState();
@@ -360,223 +384,42 @@ class _HomePageState extends State<HomePage> {
 // // //
 // // // class _HomePageState extends State<HomePage> {
 // // //   int _currentIndex = 0;
-// // //   Map<String, dynamic>? currentUser; // Stocke l'utilisateur pour le réutiliser
-// // //   String userName = "Chargement...";
-// // //   String userPhoto = "";
-// // //   final FirebaseAuth _auth = FirebaseAuth.instance;
-// // //
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-// // //     _fetchCurrentUser();
-// // //   }
-// // //
-// // //   /// 🔹 Fonction pour récupérer les infos de l'utilisateur depuis Django
-// // //   Future<void> _fetchCurrentUser() async {
-// // //     try {
-// // //       User? firebaseUser = _auth.currentUser;
-// // //       if (firebaseUser == null) {
-// // //         setState(() {
-// // //           userName = "Utilisateur non connecté";
-// // //           userPhoto = "";
-// // //         });
-// // //         return;
-// // //       }
-// // //
-// // //       String firebaseUid = firebaseUser.uid; // Récupération de l'UUID Firebase
-// // //
-// // //       print("*************************************************");
-// // //       print("🔥 UUID Firebase envoyé: $firebaseUid");
-// // //       print("*************************************************");
-// // //
-// // //       final response = await http.get(
-// // //         Uri.parse('http://192.168.0.248:8000/api/get_current_user/$firebaseUid/'),
-// // //         headers: {
-// // //           'Content-Type': 'application/json',
-// // //         },
-// // //       );
-// // //
-// // //       print("*************************************************");
-// // //       print("Réponse de Django : ${response.body}");
-// // //       print("*************************************************");
-// // //
-// // //       if (response.statusCode == 200) {
-// // //         final data = json.decode(response.body);
-// // //
-// // //         setState(() {
-// // //           currentUser = data['user']; // Stocke l'objet utilisateur
-// // //           userName = "${currentUser!['nom']} ${currentUser!['prenom']}";
-// // //           userPhoto = currentUser!['photo_profil'] ?? ""; // Vérifie si la photo existe
-// // //         });
-// // //       } else {
-// // //         setState(() {
-// // //           userName = "Utilisateur introuvable";
-// // //           userPhoto = "";
-// // //         });
-// // //       }
-// // //     } catch (error) {
-// // //       print("Erreur de connexion : $error");
-// // //       setState(() {
-// // //         userName = "Erreur de connexion";
-// // //         userPhoto = "";
-// // //       });
-// // //     }
-// // //   }
-// // //
-// // //   // 🔹 Liste des pages avec passage de l'objet utilisateur
-// // //   final List<Widget> _pages = [];
 // // //
 // // //   @override
 // // //   Widget build(BuildContext context) {
-// // //     return Scaffold(
-// // //       appBar: AppBar(
-// // //         title: Row(
+// // //     final currentUser = Provider.of<CurrentUserProvider>(context).currentUser;
+// // //
+// // //     return HairbnbScaffold(
+// // //       body: Center(
+// // //         child: Column(
+// // //           mainAxisAlignment: MainAxisAlignment.center,
 // // //           children: [
-// // //             if (userPhoto.isNotEmpty)
-// // //               CircleAvatar(
-// // //                 backgroundImage: NetworkImage(userPhoto),
-// // //                 radius: 20,
-// // //               )
-// // //             else
-// // //               const CircleAvatar(
-// // //                 backgroundColor: Colors.grey,
-// // //                 radius: 20,
-// // //                 child: Icon(Icons.person, color: Colors.white),
-// // //               ),
-// // //             const SizedBox(width: 10),
-// // //             Text(userName, style: const TextStyle(fontSize: 18)),
+// // //             Text(
+// // //               "Bienvenue, ${currentUser?.nom ?? ''} ${currentUser?.prenom ?? ''}",
+// // //               style: const TextStyle(fontSize: 20),
+// // //             ),
+// // //             const SizedBox(height: 20),
+// // //             // ElevatedButton.icon(
+// // //             //   onPressed: () {
+// // //             //     Navigator.push(
+// // //             //       context,
+// // //             //       MaterialPageRoute(builder: (context) => RdvCoiffeusePage()),
+// // //             //     );
+// // //             //   },
+// // //             //   icon: const Icon(Icons.calendar_today),
+// // //             //   label: const Text("Voir mes RDVs"),
+// // //             //   style: ElevatedButton.styleFrom(
+// // //             //     backgroundColor: Colors.orange,
+// // //             //     foregroundColor: Colors.white,
+// // //             //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+// // //             //     shape: RoundedRectangleBorder(
+// // //             //       borderRadius: BorderRadius.circular(12),
+// // //             //     ),
+// // //             //   ),
+// // //             // ),
 // // //           ],
 // // //         ),
-// // //         backgroundColor: Colors.purple,
 // // //       ),
-// // //       body: _pages.isEmpty
-// // //           ? Center(child: CircularProgressIndicator()) // Chargement
-// // //           : _pages[_currentIndex], // Affiche la page sélectionnée
-// // //       bottomNavigationBar: BottomNavBar(
-// // //         currentIndex: _currentIndex,
-// // //         onTap: (index) {
-// // //           setState(() {
-// // //             _currentIndex = index;
-// // //           });
-// // //         },
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-// //
-// //
-// //
-// //
-// //
-// // // import 'package:flutter/material.dart';
-// // // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // // import 'package:http/http.dart' as http;
-// // // import 'dart:convert';
-// // // import 'package:firebase_auth/firebase_auth.dart';
-// // //
-// // // class HomePage extends StatefulWidget {
-// // //   const HomePage({Key? key}) : super(key: key);
-// // //
-// // //   @override
-// // //   _HomePageState createState() => _HomePageState();
-// // // }
-// // //
-// // // class _HomePageState extends State<HomePage> {
-// // //   int _currentIndex = 0;
-// // //   String userName = "Chargement...";
-// // //   String userPhoto = "";
-// // //   final FirebaseAuth _auth = FirebaseAuth.instance;
-// // //
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-// // //     _fetchCurrentUser();
-// // //   }
-// // //
-// // //   Future<void> _fetchCurrentUser() async {
-// // //     try {
-// // //       User? firebaseUser = _auth.currentUser;
-// // //       if (firebaseUser == null) {
-// // //         setState(() {
-// // //           userName = "Utilisateur non connecté";
-// // //           userPhoto = "";
-// // //         });
-// // //         return;
-// // //       }
-// // //
-// // //       // Récupérer le token d'authentification Firebase
-// // //       String? token = await firebaseUser.getIdToken();
-// // //
-// // //       print("*************************************************");
-// // //       print("🔥 Token Firebase envoyé: $token");  // ✅ Vérifie que ce n'est pas `null`
-// // //       print("*************************************************");
-// // //
-// // //       final response = await http.get(
-// // //         Uri.parse('http://192.168.0.248:8000/api/get_current_user/'),
-// // //         headers: {
-// // //           'Authorization': 'Bearer $token',
-// // //           'Content-Type': 'application/json',
-// // //         },
-// // //       );
-// // //
-// // //       print("*************************************************");
-// // //       print("Réponse de Django : ${response.body}");
-// // //       print("*************************************************");
-// // //
-// // //
-// // //       if (response.statusCode == 200) {
-// // //         final data = json.decode(response.body);
-// // //         setState(() {
-// // //           userName = "${data['user']['first_name']} ${data['user']['last_name']}";
-// // //           userPhoto = data['user']['photo'] ?? ""; // Assurez-vous que l'API envoie une URL de photo
-// // //         });
-// // //       } else {
-// // //         setState(() {
-// // //           userName = "Utilisateur introuvable";
-// // //           userPhoto = "";
-// // //         });
-// // //       }
-// // //     } catch (error) {
-// // //       setState(() {
-// // //         userName = "Erreur de connexion";
-// // //         userPhoto = "";
-// // //       });
-// // //     }
-// // //   }
-// // //
-// // //   // Définir les widgets pour chaque page
-// // //   final List<Widget> _pages = [
-// // //     Center(child: Text('Page Accueil')),
-// // //     Center(child: Text('Page Rechercher')),
-// // //     Center(child: Text('Page Réservations')),
-// // //     Center(child: Text('Page Messages')),
-// // //     Center(child: Text('Page Profil')),
-// // //   ];
-// // //
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Scaffold(
-// // //       appBar: AppBar(
-// // //         title: Row(
-// // //           children: [
-// // //             if (userPhoto.isNotEmpty)
-// // //               CircleAvatar(
-// // //                 backgroundImage: NetworkImage(userPhoto),
-// // //                 radius: 20,
-// // //               )
-// // //             else
-// // //               const CircleAvatar(
-// // //                 backgroundColor: Colors.grey,
-// // //                 radius: 20,
-// // //                 child: Icon(Icons.person, color: Colors.white),
-// // //               ),
-// // //             const SizedBox(width: 10),
-// // //             Text(userName, style: const TextStyle(fontSize: 18)),
-// // //           ],
-// // //         ),
-// // //         backgroundColor: Colors.purple,
-// // //       ),
-// // //       body: _pages[_currentIndex],
 // // //       bottomNavigationBar: BottomNavBar(
 // // //         currentIndex: _currentIndex,
 // // //         onTap: (index) {
