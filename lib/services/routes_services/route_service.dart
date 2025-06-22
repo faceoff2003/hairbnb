@@ -1,6 +1,9 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../pages/payment/paiement_sucess_page.dart';
+import '../../pages/chat/chat_page.dart';
+import '../../services/providers/current_user_provider.dart';
 
 class RouteService {
   // Singleton pattern
@@ -25,10 +28,36 @@ class RouteService {
           settings: settings,
         );
 
-    // Vous pouvez ajouter d'autres routes spéciales ici
-
+      // 🆕 Route pour le chat
       default:
-      // Retourne null pour les routes inconnues (laissez le navigateur principal les gérer)
+        // Vérifier si c'est une route de chat (format: /chat/otherUserId)
+        if (name != null && name.startsWith('/chat/')) {
+          final otherUserId = name.replaceFirst('/chat/', '');
+          
+          return MaterialPageRoute(
+            builder: (context) {
+              final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+              final currentUser = currentUserProvider.currentUser;
+              
+              if (currentUser == null) {
+                // Si pas d'utilisateur connecté, rediriger vers la home
+                return Container(
+                  child: Center(
+                    child: Text("Veuillez vous connecter pour accéder au chat"),
+                  ),
+                );
+              }
+              
+              return ChatPage(
+                currentUser: currentUser,
+                otherUserId: otherUserId,
+              );
+            },
+            settings: settings,
+          );
+        }
+
+        // Retourne null pour les routes inconnues (laissez le navigateur principal les gérer)
         return null;
     }
   }
@@ -39,5 +68,10 @@ class RouteService {
       '/paiement_success',
       arguments: {'sessionId': sessionId},
     );
+  }
+
+  // 🆕 Méthode pour naviguer vers le chat
+  void navigateToChat(BuildContext context, String otherUserId) {
+    Navigator.of(context).pushNamed('/chat/$otherUserId');
   }
 }

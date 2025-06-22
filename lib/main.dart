@@ -6,6 +6,7 @@ import 'package:hairbnb/pages/ai_chat/providers/ai_chat_provider.dart';
 import 'package:hairbnb/pages/ai_chat/services/ai_chat_service.dart';
 import 'package:hairbnb/pages/ai_chat/services/coiffeuse_ai_chat_service.dart';
 import 'package:hairbnb/pages/home_page.dart';
+import 'package:hairbnb/services/notifications_services/notification_service.dart';
 import 'package:hairbnb/services/providers/cart_provider.dart';
 import 'package:hairbnb/services/providers/coiffeuse_ai_chat_provider.dart';
 import 'package:hairbnb/services/providers/disponibilites_provider.dart';
@@ -45,7 +46,16 @@ void main() async {
   } else {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );}
+  );
+
+  // Initialiser les notifications
+  await NotificationService.initialize();
+
+  print("✅ Application initialisée avec succès");
+  }
+
+  // Initialiser le service de notifications
+  // await NotificationService.initialize();
 
   HttpOverrides.global = MyHttpOverrides();
 
@@ -78,14 +88,20 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // 🆕 NavigatorKey global pour les notifications
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    // 🆕 Configurer le NavigatorKey pour les notifications
+    NotificationService.setNavigatorKey(navigatorKey);
+
     return MaterialApp(
       title: 'Hairbnb app',
       theme: ThemeData(primarySwatch: Colors.deepPurple),
-      home: const SplashScreen(), // Utilisation de SplashScreen
-
+      home: const SplashScreen(),
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
 
       onGenerateRoute: (settings) {

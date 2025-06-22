@@ -6,18 +6,12 @@ import 'package:provider/provider.dart';
 import '../../models/current_user.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../services/providers/current_user_provider.dart';
-import '../../services/firebase_token/token_service.dart';
 import '../../widgets/bottom_nav_bar.dart';
-import '../ai_chat/coiffeuse_ai/coiffeuse_ai_conversations_list.dart';
-import '../ai_chat/widgets/ai_chat_wrapper.dart';
-import '../ai_chat/services/coiffeuse_ai_chat_service.dart';
-import '../commandes/coiffeuse_commande_page.dart';
-import '../horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
+import '../admin_dashboard/admin_dashboard_page.dart';
+import '../avis/mes_avis_page.dart';
+import '../coiffeuse_dashboard/coiffeuse_dashboard_page.dart';
+import '../home_page.dart';
 import '../mes_commandes/mes_commandes_page.dart';
-import '../salon/salon_services_pages/api/salon_by_coiffeuse_api.dart';
-import '../salon/salon_services_pages/promotion/promotions_management_page.dart';
-import '../salon/salon_services_pages/show_services_list_page.dart';
-import '../../public_salon_details/show_salon_page.dart';
 import 'services/delete_account/delete_account_service.dart';
 import 'services/update_services/phone_update/phone_edit_widget.dart';
 
@@ -187,142 +181,18 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
-  /// Navigation vers l'Assistant IA Coiffeuses
-  Future<void> _navigateToCoiffeuseAI(CurrentUser user) async {
-    // Afficher un indicateur de chargement
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: primaryViolet),
-            SizedBox(height: 16),
-            Text(
-              'Initialisation de votre assistant IA...',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-      ),
+  /// Navigation sécurisée vers la home page
+  void _navigateToHome() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const HomePage()),
+      (Route<dynamic> route) => false,
     );
-
-    try {
-      // Récupérer le token Firebase
-      final token = await TokenService.getAuthToken();
-
-      if (token == null) {
-        Navigator.pop(context); // Fermer le loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur d\'authentification'),
-            backgroundColor: errorRed,
-          ),
-        );
-        return;
-      }
-
-      // Initialiser le service avec votre URL backend
-      final chatService = CoiffeuseAIChatService(
-        baseUrl: 'https://www.hairbnb.site/api',
-        token: token,
-      );
-
-      Navigator.pop(context); // Fermer le loading
-
-      // ✅ NOUVELLE APPROCHE - Passer le service directement
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CoiffeuseConversationsListPage(
-            currentUser: user,
-            chatService: chatService,
-          ),
-        ),
-      );
-    } catch (e) {
-      Navigator.pop(context); // Fermer le loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'initialisation : $e'),
-          backgroundColor: errorRed,
-        ),
-      );
-    }
   }
-
-  // Future<void> _navigateToCoiffeuseAI(CurrentUser user) async {
-  //   // Afficher un indicateur de chargement
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (context) => Center(
-  //       child: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           CircularProgressIndicator(color: primaryViolet),
-  //           SizedBox(height: 16),
-  //           Text(
-  //             'Initialisation de votre assistant IA...',
-  //             style: TextStyle(color: Colors.white),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  //
-  //   try {
-  //     // Récupérer le token Firebase
-  //     final token = await TokenService.getAuthToken();
-  //
-  //     if (token == null) {
-  //       Navigator.pop(context); // Fermer le loading
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('Erreur d\'authentification'),
-  //           backgroundColor: errorRed,
-  //         ),
-  //       );
-  //       return;
-  //     }
-  //
-  //     // Initialiser le service avec votre URL backend
-  //     final chatService = CoiffeuseAIChatService(
-  //       baseUrl: 'https://www.hairbnb.site/api',
-  //       token: token,
-  //     );
-  //
-  //     // Créer le provider
-  //     final chatProvider = CoiffeuseAIChatProvider(chatService);
-  //
-  //     Navigator.pop(context);
-  //
-  //     // Naviguer vers la page des conversations
-  //     Navigator.push(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder: (context) => ChangeNotifierProvider<CoiffeuseAIChatProvider>(
-  //           create: (context) => CoiffeuseAIChatProvider(chatService),
-  //           child: CoiffeuseConversationsListPage(currentUser: user),
-  //         ),
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     Navigator.pop(context); // Fermer le loading
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('Erreur lors de l\'initialisation : $e'),
-  //         backgroundColor: errorRed,
-  //       ),
-  //     );
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
     final CurrentUser user = Provider.of<CurrentUserProvider>(context).currentUser ?? widget.currentUser;
-
+//-----------------------------------------------------------------------------------------------------
     // DEBUG TEMPORAIRE - à retirer après test
     if (kDebugMode) {
       print("=== DEBUG PROFIL ===");
@@ -335,14 +205,21 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       print("_isCoiffeuseProprietaire(user): ${_isCoiffeuseProprietaire(user)}");
       print("===================");
     }
-
+//-----------------------------------------------------------------------------------------------------
     return Scaffold(
       backgroundColor: lightBackground,
       appBar: AppBar(
         backgroundColor: primaryViolet,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // 🔥 FIX: Navigation intelligente
+            if (Navigator.of(context).canPop()) {
+              Navigator.pop(context);
+            } else {
+              _navigateToHome();
+            }
+          },
           icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         title: const Text(
@@ -491,161 +368,50 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     children: [
                       if (user.isCoiffeuseUser()) ...[
                         _actionTile(
-                            Icons.build,
-                            "Services",
-                                () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ServicesListPage(coiffeuseId: user.idTblUser.toString()),
-                                ),
-                              );
-                            }
-                        ),
-
-                        // Promotions
-                        _actionTile(
-                          Icons.local_offer,
-                          "Promotions",
+                          Icons.dashboard,
+                          "Espace Coiffeuse",
                               () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => PromotionsManagementPage(coiffeuseId: user.idTblUser.toString()),
-                              ),
-                            );
-                          },
-                          isHighlighted: true,
-                        ),
-
-                        // Mon salon
-                        _actionTile(
-                            Icons.store,
-                            "Mon salon",
-                                () async {
-                              // Afficher un indicateur de chargement
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-
-                              try {
-                                // Récupérer le salon directement à partir de l'utilisateur s'il existe
-                                if (user.coiffeuse?.salon != null) {
-                                  // Fermer l'indicateur de chargement
-                                  Navigator.pop(context);
-
-                                  // Naviguer vers la page de détails du salon
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => SalonDetailsPage(
-                                        salonId: user.coiffeuse!.salon!.idTblSalon,
-                                        currentUserId: user.idTblUser,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  // Appel au service pour récupérer le salon
-                                  final salon = await SalonByCoiffeuseApi.getSalonByCoiffeuseId(user.idTblUser);
-
-                                  // Fermer l'indicateur de chargement
-                                  Navigator.pop(context);
-
-                                  if (salon != null) {
-                                    // Naviguer vers la page de détails du salon
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => SalonDetailsPage(
-                                          salonId: salon.idSalon,
-                                          currentUserId: user.idTblUser,
-                                        ),
-                                      ),
-                                    );
-                                  } else {
-                                    // Si aucun salon n'est trouvé
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text("Vous n'avez pas encore de salon."),
-                                        backgroundColor: Colors.orange,
-                                      ),
-                                    );
-                                  }
-                                }
-                              } catch (e) {
-                                // Fermer l'indicateur de chargement en cas d'erreur
-                                Navigator.pop(context);
-
-                                // Afficher un message d'erreur
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text("Erreur lors du chargement du salon: $e"),
-                                    backgroundColor: errorRed,
-                                  ),
-                                );
-                              }
-                            }
-                        ),
-
-                        // Disponibilités
-                        _actionTile(
-                            Icons.calendar_today,
-                            "Mes disponibilités",
-                                () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HoraireIndispoPage(coiffeuseId: user.idTblUser),
-                                ),
-                              );
-                            }
-                        ),
-
-                        // Commandes reçues
-                        _actionTile(
-                          Icons.assignment,
-                          "Commandes Reçues",
-                              () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CoiffeuseCommandesPage(
+                                builder: (context) => CoiffeuseDashboardPage(
                                   currentUser: user,
                                 ),
                               ),
                             );
                           },
-                        ),
-                      ],
-
-                      // Assistant IA pour Coiffeuses Propriétaires
-                      if (_isCoiffeuseProprietaire(user))
-                        _actionTile(
-                          Icons.auto_awesome,
-                          "🤖 Mon Assistant IA Personnel",
-                              () => _navigateToCoiffeuseAI(user),
                           isHighlighted: true,
                         ),
+                      ],
 
                       // Assistant IA pour Admins
                       if (_isAdmin(user))
                         _actionTile(
-                          Icons.chat_bubble,
-                          "🔧 Assistant IA Admin",
+                          Icons.admin_panel_settings,
+                          "Administration",
                               () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => AIChatWrapper(currentUser: user),
+                                builder: (context) => AdminDashboardPage(currentUser: user),
                               ),
                             );
                           },
                           isHighlighted: true,
                         ),
+                      _actionTile(
+                        Icons.rate_review,
+                        "Mes avis",
+                            () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MesAvisPage(),
+                            ),
+                          );
+                        },
+                        isHighlighted: true,
+                      ),
 
                       // Mes commandes (pour tous)
                       _actionTile(

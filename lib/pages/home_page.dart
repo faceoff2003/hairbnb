@@ -19,7 +19,7 @@ class _HomePageState extends State<HomePage> {
 
   /// 🔔 Fonction appelée quand on clique sur le badge d'avis
   void _navigateToAvisEnAttente() {
-    print("🔔 Navigation vers avis en attente");
+    //print("🔔 Navigation vers avis en attente");
 
     Navigator.push(
       context,
@@ -72,46 +72,46 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 20),
 
                   // 🧪 BOUTON DEBUG TEMPORAIRE
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    margin: EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.red[50],
-                      border: Border.all(color: Colors.red[200]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.bug_report, color: Colors.red, size: 30),
-                        SizedBox(height: 8),
-                        Text(
-                          '🚨 PROBLÈME DÉTECTÉ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red[700],
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Erreur: "No TblClient matches"',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red[600],
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _navigateToDebug,
-                          icon: Icon(Icons.build),
-                          label: Text('🧪 DIAGNOSTIQUER'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Container(
+                  //   padding: EdgeInsets.all(16),
+                  //   margin: EdgeInsets.symmetric(horizontal: 20),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.red[50],
+                  //     border: Border.all(color: Colors.red[200]!),
+                  //     borderRadius: BorderRadius.circular(8),
+                  //   ),
+                  //   child: Column(
+                  //     children: [
+                  //       Icon(Icons.bug_report, color: Colors.red, size: 30),
+                  //       SizedBox(height: 8),
+                  //       Text(
+                  //         '🚨 PROBLÈME DÉTECTÉ',
+                  //         style: TextStyle(
+                  //           fontWeight: FontWeight.bold,
+                  //           color: Colors.red[700],
+                  //         ),
+                  //       ),
+                  //       SizedBox(height: 4),
+                  //       Text(
+                  //         'Erreur: "No TblClient matches"',
+                  //         style: TextStyle(
+                  //           fontSize: 12,
+                  //           color: Colors.red[600],
+                  //         ),
+                  //       ),
+                  //       SizedBox(height: 12),
+                  //       ElevatedButton.icon(
+                  //         onPressed: _navigateToDebug,
+                  //         icon: Icon(Icons.build),
+                  //         label: Text('🧪 DIAGNOSTIQUER'),
+                  //         style: ElevatedButton.styleFrom(
+                  //           backgroundColor: Colors.red,
+                  //           foregroundColor: Colors.white,
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
 
                   const SizedBox(height: 20),
 

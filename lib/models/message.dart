@@ -1,4 +1,4 @@
-﻿import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class Message {
   final String senderId;
@@ -21,7 +21,7 @@ class Message {
       "senderId": senderId,
       "receiverId": receiverId,
       "text": text,
-      "timestamp": timestamp.millisecondsSinceEpoch, // ✅ Stockage en int pour Firebase
+      "timestamp": timestamp.millisecondsSinceEpoch, // ✅ Toujours utiliser milliseconds
       "isRead": isRead,
     };
   }
@@ -32,7 +32,7 @@ class Message {
       senderId: json['senderId'],
       receiverId: json['receiverId'],
       text: json['text'],
-      timestamp: _parseTimestamp(json['timestamp']), // ✅ Utilisation de la nouvelle fonction
+      timestamp: _parseTimestamp(json['timestamp']), // ✅ Utilisation de la fonction robuste
       isRead: json['isRead'] ?? false,
     );
   }
@@ -43,129 +43,34 @@ class Message {
     return Message.fromJson(data);
   }
 
-  /// ✅ Fonction pour convertir le `timestamp` (String ou int) en `DateTime`
+  /// ✅ Fonction robuste pour convertir le `timestamp` en `DateTime`
   static DateTime _parseTimestamp(dynamic timestamp) {
-    if (timestamp is String) {
-      return DateTime.parse(timestamp).toUtc(); // ✅ Cas d'une String ISO
-    } else if (timestamp is int) {
-      return DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true); // ✅ Cas d'un int Unix
+    if (timestamp == null) {
+      return DateTime.now().toUtc();
     }
-    return DateTime.now().toUtc(); // ✅ Valeur par défaut (sécurité)
+    
+    // Cas le plus courant : timestamp Unix en millisecondes (int)
+    if (timestamp is int) {
+      return DateTime.fromMillisecondsSinceEpoch(timestamp, isUtc: true);
+    }
+    
+    // Cas String
+    if (timestamp is String) {
+      try {
+        // Tenter de parser comme string de millisecondes
+        final millis = int.tryParse(timestamp);
+        if (millis != null) {
+          return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+        }
+        
+        // Tenter de parser comme ISO string
+        return DateTime.parse(timestamp).toUtc();
+      } catch (e) {
+        print("❌ Erreur parsing timestamp '$timestamp': $e");
+      }
+    }
+    
+    // Valeur par défaut en cas d'échec
+    return DateTime.now().toUtc();
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:firebase_database/firebase_database.dart';
-//
-// class Message {
-//   final String senderId;
-//   final String receiverId;
-//   final String text;
-//   final DateTime timestamp;
-//   final bool isRead;
-//
-//   Message({
-//     required this.senderId,
-//     required this.receiverId,
-//     required this.text,
-//     required this.timestamp,
-//     this.isRead = false,
-//   });
-//
-//   /// ✅ Convertir un objet `Message` en JSON pour Firebase
-//   Map<String, dynamic> toJson() {
-//     return {
-//       "senderId": senderId,
-//       "receiverId": receiverId,
-//       "text": text,
-//       "timestamp": timestamp.toIso8601String(),
-//       "isRead": isRead,
-//     };
-//   }
-//
-//   /// ✅ Convertir un JSON Firebase en `Message`
-//   factory Message.fromJson(Map<dynamic, dynamic> json) {
-//     return Message(
-//       senderId: json['senderId'],
-//       receiverId: json['receiverId'],
-//       text: json['text'],
-//       timestamp: DateTime.parse(json['timestamp']),
-//       isRead: json['isRead'] ?? false,
-//     );
-//   }
-//
-//   /// ✅ Convertir un `DataSnapshot` Firebase en `Message`
-//   factory Message.fromSnapshot(DataSnapshot snapshot) {
-//     final data = snapshot.value as Map<dynamic, dynamic>;
-//     return Message.fromJson(data);
-//   }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import 'package:firebase_database/firebase_database.dart';
-//
-// class Message {
-//   final String senderId; // ID de l'expéditeur (client ou coiffeuse)
-//   final String receiverId; // ID du destinataire
-//   final String text; // Contenu du message
-//   final DateTime timestamp; // Horodatage du message
-//   final bool isRead; // Statut de lecture du message
-//
-//   Message({
-//     required this.senderId,
-//     required this.receiverId,
-//     required this.text,
-//     required this.timestamp,
-//     this.isRead = false, // Par défaut, non lu
-//   });
-//
-//   /// ✅ Convertir un objet Message en JSON pour Firebase Realtime Database
-//   Map<String, dynamic> toJson() {
-//     return {
-//       "senderId": senderId,
-//       "receiverId": receiverId,
-//       "text": text,
-//       "timestamp": timestamp.toIso8601String(),
-//       "isRead": isRead,
-//     };
-//   }
-//
-//   /// ✅ Convertir un JSON Firebase en objet Message
-//   factory Message.fromJson(Map<dynamic, dynamic> json) {
-//     return Message(
-//       senderId: json['senderId'],
-//       receiverId: json['receiverId'],
-//       text: json['text'],
-//       timestamp: DateTime.parse(json['timestamp']),
-//       isRead: json['isRead'] ?? false,
-//     );
-//   }
-//
-//   /// ✅ Convertir un `DataSnapshot` Firebase en objet Message
-//   factory Message.fromSnapshot(DataSnapshot snapshot) {
-//     final data = snapshot.value as Map<dynamic, dynamic>;
-//     return Message.fromJson(data);
-//   }
-// }

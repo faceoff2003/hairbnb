@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../../chat/chat_services/user_service.dart';
 
 
 class AddressApiService {
@@ -18,7 +17,6 @@ class AddressApiService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          // Ajoutez l'authentification si nécessaire
         },
         body: json.encode(addressData),
       );
@@ -37,7 +35,7 @@ class AddressApiService {
 
   static Future<Map<String, dynamic>?> getUserAddress(String userUuid) async {
     try {
-      final url = Uri.parse('$baseUrl/users/$userUuid/address');
+      final url = Uri.parse('https://www.hairbnb.site/users/$userUuid/address');
 
       final response = await http.get(
         url,

@@ -11,7 +11,6 @@ import '../../../models/salon_details_geo.dart';
 import '../../../models/public_salon_details.dart';
 import '../../../public_salon_details/api/PublicSalonDetailsApi.dart';
 import '../../../public_salon_details/modals/show_horaires_modal.dart';
-import '../../../services/providers/cart_provider.dart';
 import '../../chat/chat_page.dart';
 import '../itineraire_page.dart';
 import 'show_salon_services_modal_service/show_salon_services_modal_service.dart';
@@ -337,9 +336,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
     );
   }
 
-  // 🔧 CORRECTION COMPLÈTE: show_salon_details_modal.dart
-// Remplacez la méthode _buildSalonInfo() par ceci pour afficher TOUTES les informations :
-
+  // 🔧 MODIFICATION COMPLÈTE: Méthode _buildSalonInfo mise à jour
   Widget _buildSalonInfo(double distance) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,7 +408,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
             title: "À propos du salon",
             content: salonDetails!.aPropos!,
             color: Colors.green,
-            isExpandable: true, // Pour les longs textes
+            isExpandable: true,
           ),
 
         // ✅ NOUVEAU: Dénomination sociale/nom commercial
@@ -442,11 +439,250 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
 
         // Informations existantes (horaires, contact, évaluations)
         _buildInfoTiles(),
+
+        // ✅ NOUVEAU: Section avis intégrée
+        _buildAvisSection(),
       ],
     );
   }
 
-// ✅ NOUVELLE MÉTHODE: Carte pour afficher les détails
+  /// ✅ NOUVELLE SECTION: Affichage des avis directement dans le modal
+  Widget _buildAvisSection() {
+    if (salonDetails == null || salonDetails!.avis.isEmpty) {
+      return SizedBox.shrink(); // Ne rien afficher s'il n'y a pas d'avis
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 24),
+
+        // 🌟 En-tête section avis
+        Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.star, color: Colors.amber, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Avis clients",
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: widget.primaryColor,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Row(
+                        children: List.generate(5, (i) => Icon(
+                          Icons.star,
+                          size: 16,
+                          color: i < salonDetails!.noteMoyenne.round()
+                              ? Colors.amber
+                              : Colors.grey[300],
+                        )),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "${salonDetails!.noteMoyenne.toStringAsFixed(1)} sur 5",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      Text(
+                        " • ${salonDetails!.nombreAvis} avis",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (salonDetails!.avis.length > 3)
+              TextButton(
+                onPressed: _afficherEvaluations,
+                child: Text(
+                  "Voir tous",
+                  style: TextStyle(
+                    color: widget.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+
+        SizedBox(height: 16),
+
+        // 📋 Liste des avis (affichage des 3 premiers)
+        ...salonDetails!.avis.take(3).map((avis) => _buildAvisCard(avis)),
+
+        // 👀 Bouton "Voir plus" si il y a plus de 3 avis
+        if (salonDetails!.avis.length > 3)
+          Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Center(
+              child: OutlinedButton.icon(
+                onPressed: _afficherEvaluations,
+                icon: Icon(Icons.visibility),
+                label: Text("Voir les ${salonDetails!.avis.length - 3} autres avis"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: widget.primaryColor,
+                  side: BorderSide(color: widget.primaryColor.withOpacity(0.3)),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 🎨 Carte individuelle d'avis
+  Widget _buildAvisCard(Avis avis) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 3,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 👤 En-tête client + note
+          Row(
+            children: [
+              // Avatar client
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: widget.primaryColor.withOpacity(0.1),
+                child: Text(
+                  avis.clientNom.isNotEmpty
+                      ? avis.clientNom[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: widget.primaryColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+
+              // Nom + date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      avis.clientNom.isNotEmpty ? avis.clientNom : "Client anonyme",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      avis.dateFormat,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Note avec étoiles
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getBackgroundColorForNote(avis.note),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      avis.note.toString(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 12),
+
+          // 💬 Commentaire
+          Text(
+            avis.commentaire,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 14,
+              height: 1.4,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 🎨 Couleur de fond selon la note
+  Color _getBackgroundColorForNote(int note) {
+    switch (note) {
+      case 5:
+        return Colors.green;
+      case 4:
+        return Colors.lightGreen;
+      case 3:
+        return Colors.orange;
+      case 2:
+        return Colors.deepOrange;
+      case 1:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+
+// Carte pour afficher les détails
   Widget _buildDetailCard({
     required IconData icon,
     required String title,
@@ -630,63 +866,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
     );
   }
 
-
-
-
-  // Widget _buildSalonInfo(double distance) {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Text(
-  //         widget.salon.nom,
-  //         style: GoogleFonts.poppins(
-  //           fontSize: 28,
-  //           fontWeight: FontWeight.w700,
-  //           color: widget.primaryColor,
-  //         ),
-  //       ),
-  //       SizedBox(height: 8),
-  //       if (widget.salon.slogan != null && widget.salon.slogan!.isNotEmpty)
-  //         Padding(
-  //           padding: const EdgeInsets.only(bottom: 16),
-  //           child: Text(
-  //             widget.salon.slogan!,
-  //             style: GoogleFonts.poppins(
-  //               fontSize: 16,
-  //               fontStyle: FontStyle.italic,
-  //               color: Colors.grey[600],
-  //             ),
-  //           ),
-  //         ),
-  //       Container(
-  //         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  //         decoration: BoxDecoration(
-  //           color: widget.accentColor.withAlpha((255 * 0.2).round()),
-  //           borderRadius: BorderRadius.circular(25),
-  //         ),
-  //         child: Row(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             Icon(Icons.location_on, color: widget.accentColor, size: 18),
-  //             SizedBox(width: 6),
-  //             Text(
-  //               "${widget.salon.distanceFormatee} de vous",
-  //               style: TextStyle(
-  //                 fontSize: 14,
-  //                 color: widget.accentColor,
-  //                 fontWeight: FontWeight.w600,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //       SizedBox(height: 20),
-  //       _buildInfoTiles(),
-  //     ],
-  //   );
-  // }
-
-  /// ✅ MODIFIÉ : Ajouter les actions aux tuiles
+  ///  Ajouter les actions aux tuiles
   Widget _buildInfoTiles() {
     return Column(
       children: [
@@ -835,6 +1015,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
     );
   }
 
+  // 🔧 CORRECTION : Méthode _buildTeamMember responsive
   Widget _buildTeamMember(CoiffeuseDetailsForGeo coiffeuse) {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
@@ -851,107 +1032,145 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
         ],
         border: Border.all(color: Colors.grey[100]!),
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: coiffeuse.estProprietaire
-                ? widget.primaryColor.withAlpha((255 * 0.2).round())
-                : Colors.grey[200],
-            child: Icon(
-              Icons.person,
-              color: coiffeuse.estProprietaire ? widget.primaryColor : Colors.grey[500],
-              size: 28,
-            ),
-          ),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          // 🔧 PREMIÈRE LIGNE : Avatar + Nom + Badge propriétaire + Bouton chat
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 25, // ✅ Réduit de 30 à 25 pour plus d'espace
+                backgroundColor: coiffeuse.estProprietaire
+                    ? widget.primaryColor.withAlpha((255 * 0.2).round())
+                    : Colors.grey[200],
+                child: Icon(
+                  Icons.person,
+                  color: coiffeuse.estProprietaire ? widget.primaryColor : Colors.grey[500],
+                  size: 24, // ✅ Réduit de 28 à 24
+                ),
+              ),
+              SizedBox(width: 12),
+
+              // ✅ Expanded pour éviter le débordement
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        coiffeuse.nomComplet,
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (coiffeuse.estProprietaire)
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: widget.primaryColor.withAlpha((255 * 0.2).round()),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          "Propriétaire",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: widget.primaryColor,
-                            fontWeight: FontWeight.w700,
+                    // Nom avec badge propriétaire sur la même ligne si possible
+                    Row(
+                      children: [
+                        // ✅ Flexible pour permettre le wrap du nom
+                        Flexible(
+                          child: Text(
+                            coiffeuse.nomComplet,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16, // ✅ Réduit de 18 à 16
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
+
+                        // Badge propriétaire conditionnel
+                        if (coiffeuse.estProprietaire) ...[
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: widget.primaryColor.withAlpha((255 * 0.2).round()),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              "Propriétaire",
+                              style: TextStyle(
+                                fontSize: 10, // ✅ Réduit de 11 à 10
+                                color: widget.primaryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    // Nom commercial (si existe)
+                    if (coiffeuse.nomCommercial != null && coiffeuse.nomCommercial!.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        coiffeuse.affichageNom,
+                        style: TextStyle(
+                          fontSize: 12, // ✅ Réduit de 14 à 12
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
+                    ],
                   ],
                 ),
-                SizedBox(height: 4),
-                if (coiffeuse.nomCommercial != null && coiffeuse.nomCommercial!.isNotEmpty)
-                  Text(
-                    coiffeuse.affichageNom,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
+              ),
+
+              // Bouton chat
+              Container(
+                decoration: BoxDecoration(
+                  color: widget.primaryColor.withAlpha((255 * 0.1).round()),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  constraints: BoxConstraints(
+                    minWidth: 40, // ✅ Taille minimale définie
+                    minHeight: 40,
                   ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    _buildInfoChip(
-                      icon: Icons.badge,
-                      label: coiffeuse.role,
-                      color: Colors.blue,
-                    ),
-                    SizedBox(width: 8),
-                    _buildInfoChip(
-                      icon: Icons.work,
-                      label: coiffeuse.type,
-                      color: Colors.green,
-                    ),
-                  ],
+                  icon: Icon(
+                    Icons.chat_bubble_outline,
+                    color: widget.primaryColor,
+                    size: 18, // ✅ Réduit de 24 à 18
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatPage(
+                          currentUser: widget.currentUser,
+                          otherUserId: coiffeuse.uuid,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: widget.primaryColor.withAlpha((255 * 0.1).round()),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.chat_bubble_outline, color: widget.primaryColor),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatPage(
-                      currentUser: widget.currentUser,
-                      otherUserId: coiffeuse.uuid,
-                    ),
-                  ),
-                );
-              },
-            ),
+
+          SizedBox(height: 12),
+
+          // 🔧 DEUXIÈME LIGNE : Chips d'information dans un Wrap responsive
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.start,
+            children: [
+              _buildInfoChip(
+                icon: Icons.badge,
+                label: coiffeuse.role,
+                color: Colors.blue,
+              ),
+              _buildInfoChip(
+                icon: Icons.work,
+                label: coiffeuse.type,
+                color: Colors.green,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+// 🔧 CORRECTION : Méthode _buildInfoChip plus compacte
   Widget _buildInfoChip({
     required IconData icon,
     required String label,
@@ -968,18 +1187,344 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
         children: [
           Icon(icon, size: 12, color: color),
           SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color,
-              fontWeight: FontWeight.w500,
+          // ✅ Texte flexible pour éviter le débordement
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10, // ✅ Réduit de 11 à 10
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildTeamMemberCompact(CoiffeuseDetailsForGeo coiffeuse) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((255 * 0.05).round()),
+            blurRadius: 5,
+            offset: Offset(0, 1),
+          ),
+        ],
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: Row(
+        children: [
+          // Avatar plus petit
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: coiffeuse.estProprietaire
+                ? widget.primaryColor.withAlpha((255 * 0.2).round())
+                : Colors.grey[200],
+            child: Icon(
+              Icons.person,
+              color: coiffeuse.estProprietaire ? widget.primaryColor : Colors.grey[500],
+              size: 20,
+            ),
+          ),
+          SizedBox(width: 12),
+
+          // Informations principales
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Nom
+                Text(
+                  coiffeuse.nomComplet,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+
+                // Badges en ligne
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    if (coiffeuse.estProprietaire)
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: widget.primaryColor.withAlpha((255 * 0.2).round()),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "Propriétaire",
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: widget.primaryColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    if (coiffeuse.estProprietaire) SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        "${coiffeuse.role} • ${coiffeuse.type}",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Bouton chat compact
+          Material(
+            color: widget.primaryColor.withAlpha((255 * 0.1).round()),
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatPage(
+                      currentUser: widget.currentUser,
+                      otherUserId: coiffeuse.uuid,
+                    ),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(
+                  Icons.chat_bubble_outline,
+                  color: widget.primaryColor,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// 🔧 MISE À JOUR : Section équipe avec détection de taille d'écran
+//   Widget _buildTeamSection(List<CoiffeuseDetailsForGeo> coiffeuses) {
+//     return LayoutBuilder(
+//       builder: (context, constraints) {
+//         // Détection de la taille d'écran
+//         final isSmallScreen = constraints.maxWidth < 400;
+//
+//         return Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             // En-tête responsive
+//             Row(
+//               children: [
+//                 Expanded(
+//                   child: Text(
+//                     "L'équipe du salon",
+//                     style: GoogleFonts.poppins(
+//                       fontSize: isSmallScreen ? 18 : 20,
+//                       fontWeight: FontWeight.w700,
+//                       color: widget.primaryColor,
+//                     ),
+//                   ),
+//                 ),
+//                 Container(
+//                   padding: EdgeInsets.symmetric(
+//                       horizontal: isSmallScreen ? 6 : 8,
+//                       vertical: 4
+//                   ),
+//                   decoration: BoxDecoration(
+//                     color: widget.primaryColor.withAlpha((255 * 0.1).round()),
+//                     borderRadius: BorderRadius.circular(12),
+//                   ),
+//                   child: Text(
+//                     "${widget.salon.nombreCoiffeuses} membre${widget.salon.nombreCoiffeuses > 1 ? 's' : ''}",
+//                     style: TextStyle(
+//                       fontSize: isSmallScreen ? 10 : 12,
+//                       color: widget.primaryColor,
+//                       fontWeight: FontWeight.w600,
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 16),
+//
+//             // Liste des membres avec version appropriée
+//             ...coiffeuses.map<Widget>((coiffeuse) =>
+//             isSmallScreen
+//                 ? _buildTeamMemberCompact(coiffeuse)
+//                 : _buildTeamMember(coiffeuse)
+//             ),
+//           ],
+//         );
+//       },
+//     );
+//   }
+
+  // Widget _buildTeamMember(CoiffeuseDetailsForGeo coiffeuse) {
+  //   return Container(
+  //     margin: EdgeInsets.only(bottom: 16),
+  //     padding: EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(16),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withAlpha((255 * 0.05).round()),
+  //           blurRadius: 10,
+  //           offset: Offset(0, 2),
+  //         ),
+  //       ],
+  //       border: Border.all(color: Colors.grey[100]!),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         CircleAvatar(
+  //           radius: 30,
+  //           backgroundColor: coiffeuse.estProprietaire
+  //               ? widget.primaryColor.withAlpha((255 * 0.2).round())
+  //               : Colors.grey[200],
+  //           child: Icon(
+  //             Icons.person,
+  //             color: coiffeuse.estProprietaire ? widget.primaryColor : Colors.grey[500],
+  //             size: 28,
+  //           ),
+  //         ),
+  //         SizedBox(width: 16),
+  //         Expanded(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Row(
+  //                 children: [
+  //                   Expanded(
+  //                     child: Text(
+  //                       coiffeuse.nomComplet,
+  //                       style: GoogleFonts.poppins(
+  //                         fontSize: 18,
+  //                         fontWeight: FontWeight.w600,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   if (coiffeuse.estProprietaire)
+  //                     Container(
+  //                       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  //                       decoration: BoxDecoration(
+  //                         color: widget.primaryColor.withAlpha((255 * 0.2).round()),
+  //                         borderRadius: BorderRadius.circular(15),
+  //                       ),
+  //                       child: Text(
+  //                         "Propriétaire",
+  //                         style: TextStyle(
+  //                           fontSize: 11,
+  //                           color: widget.primaryColor,
+  //                           fontWeight: FontWeight.w700,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //               SizedBox(height: 4),
+  //               if (coiffeuse.nomCommercial != null && coiffeuse.nomCommercial!.isNotEmpty)
+  //                 Text(
+  //                   coiffeuse.affichageNom,
+  //                   style: TextStyle(
+  //                     fontSize: 14,
+  //                     color: Colors.grey[600],
+  //                     fontStyle: FontStyle.italic,
+  //                   ),
+  //                 ),
+  //               SizedBox(height: 8),
+  //               Row(
+  //                 children: [
+  //                   _buildInfoChip(
+  //                     icon: Icons.badge,
+  //                     label: coiffeuse.role,
+  //                     color: Colors.blue,
+  //                   ),
+  //                   SizedBox(width: 8),
+  //                   _buildInfoChip(
+  //                     icon: Icons.work,
+  //                     label: coiffeuse.type,
+  //                     color: Colors.green,
+  //                   ),
+  //                 ],
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         Container(
+  //           decoration: BoxDecoration(
+  //             color: widget.primaryColor.withAlpha((255 * 0.1).round()),
+  //             borderRadius: BorderRadius.circular(8),
+  //           ),
+  //           child: IconButton(
+  //             icon: Icon(Icons.chat_bubble_outline, color: widget.primaryColor),
+  //             onPressed: () {
+  //               Navigator.push(
+  //                 context,
+  //                 MaterialPageRoute(
+  //                   builder: (context) => ChatPage(
+  //                     currentUser: widget.currentUser,
+  //                     otherUserId: coiffeuse.uuid,
+  //                   ),
+  //                 ),
+  //               );
+  //             },
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildInfoChip({
+  //   required IconData icon,
+  //   required String label,
+  //   required Color color,
+  // }) {
+  //   return Container(
+  //     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  //     decoration: BoxDecoration(
+  //       color: color.withAlpha((255 * 0.1).round()),
+  //       borderRadius: BorderRadius.circular(12),
+  //     ),
+  //     child: Row(
+  //       mainAxisSize: MainAxisSize.min,
+  //       children: [
+  //         Icon(icon, size: 12, color: color),
+  //         SizedBox(width: 4),
+  //         Text(
+  //           label,
+  //           style: TextStyle(
+  //             fontSize: 11,
+  //             color: color,
+  //             fontWeight: FontWeight.w500,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
 
   Widget _buildActionButtons(BuildContext context) {
@@ -1063,91 +1608,17 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () async {
-                try {
-                  // 🔄 Afficher le modal et récupérer les services sélectionnés
-                  final selectedServices = await SalonServicesModalService.afficherServicesModal(
-                    context,
-                    salon: widget.salon,
-                    primaryColor: widget.primaryColor,
-                    accentColor: widget.accentColor,
-                  );
+                // ✅ NOUVEAU : Le modal gère maintenant tout l'ajout au panier avec notifications centrées
+                await SalonServicesModalService.afficherServicesModal(
+                  context,
+                  salon: widget.salon,
+                  currentUser: widget.currentUser, // ✅ NOUVEAU : Passer currentUser
+                  primaryColor: widget.primaryColor,
+                  accentColor: widget.accentColor,
+                );
 
-                  // ✅ Si des services ont été sélectionnés, les ajouter au panier
-                  if (selectedServices != null && selectedServices.isNotEmpty) {
-                    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-
-                    // 📦 Ajouter chaque service au panier via l'API
-                    for (var service in selectedServices) {
-                      await cartProvider.addToCart(service, widget.currentUser.idTblUser.toString());
-                    }
-
-                    // 🎯 SOLUTION 1: rootNavigator pour afficher AU-DESSUS du modal
-                    final rootContext = Navigator.of(context, rootNavigator: true).context;
-                    ScaffoldMessenger.of(rootContext).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text("✅ ${selectedServices.length} service(s) ajouté(s) au panier !"),
-                            ),
-                          ],
-                        ),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2), // Plus court pour pas gêner
-                        action: SnackBarAction(
-                          label: "Voir panier",
-                          textColor: Colors.white,
-                          onPressed: () {
-                            Navigator.of(context).pop(); // Fermer modal détails seulement
-                            Navigator.pushNamed(context, '/cart');
-                          },
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        margin: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).size.height * 0.1, // Au-dessus du modal
-                          left: 16,
-                          right: 16,
-                        ),
-                      ),
-                    );
-
-                    print("✅ ${selectedServices.length} services ajoutés au panier depuis le modal détails pour ${widget.salon.nom}");
-                  }
-                } catch (e) {
-                  // ❌ Gestion des erreurs (modal reste ouvert)
-                  print("❌ Erreur lors de l'ajout au panier depuis le modal détails : $e");
-
-                  final rootContext = Navigator.of(context, rootNavigator: true).context;
-                  ScaffoldMessenger.of(rootContext).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.error, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text("Erreur lors de l'ajout au panier. Veuillez réessayer."),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: Colors.red,
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      margin: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).size.height * 0.1,
-                        left: 16,
-                        right: 16,
-                      ),
-                    ),
-                  );
-                }
+                // ✅ Plus besoin de logique d'ajout au panier ici - le modal gère tout !
+                print("✅ Modal services fermé pour ${widget.salon.nom}");
               },
               icon: Icon(Icons.date_range),
               label: Text("Services"),
@@ -1163,98 +1634,4 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
     );
   }
 
-  // Widget _buildActionButtons(BuildContext context) {
-  //   CoiffeuseDetailsForGeo? contactPersonne = widget.salon.proprietaire;
-  //   final coiffeuses = widget.salon.coiffeusesDetails;
-  //
-  //   if (contactPersonne == null && coiffeuses.isNotEmpty) {
-  //     contactPersonne = coiffeuses.first;
-  //   }
-  //
-  //   return Container(
-  //     padding: EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withAlpha((255 * 0.05).round()),
-  //           blurRadius: 10,
-  //           offset: Offset(0, -5),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         Expanded(
-  //           child: OutlinedButton.icon(
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //             icon: Icon(Icons.directions),
-  //             label: Text("Itinéraire"),
-  //             style: OutlinedButton.styleFrom(
-  //               foregroundColor: widget.accentColor,
-  //               side: BorderSide(color: widget.accentColor),
-  //               padding: EdgeInsets.symmetric(vertical: 16),
-  //             ),
-  //           ),
-  //         ),
-  //         SizedBox(width: 12),
-  //         Expanded(
-  //           child: OutlinedButton.icon(
-  //             onPressed: () {
-  //               if (contactPersonne != null) {
-  //                 Navigator.push(
-  //                   context,
-  //                   MaterialPageRoute(
-  //                     builder: (context) => ChatPage(
-  //                       currentUser: widget.currentUser,
-  //                       otherUserId: contactPersonne!.uuid,
-  //                     ),
-  //                   ),
-  //                 );
-  //               } else {
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   SnackBar(
-  //                     content: Text("Aucun contact disponible pour ce salon."),
-  //                     backgroundColor: Colors.red,
-  //                   ),
-  //                 );
-  //               }
-  //             },
-  //             icon: Icon(Icons.chat_bubble_outline),
-  //             label: Text("Contacter"),
-  //             style: OutlinedButton.styleFrom(
-  //               foregroundColor: Colors.green,
-  //               side: BorderSide(color: Colors.green),
-  //               padding: EdgeInsets.symmetric(vertical: 16),
-  //             ),
-  //           ),
-  //         ),
-  //         SizedBox(width: 12),
-  //         Expanded(
-  //           child: ElevatedButton.icon(
-  //             onPressed: () {
-  //               SalonServicesModalService.afficherServicesModal(
-  //                 context,
-  //                 salon: widget.salon,
-  //                 primaryColor: widget.primaryColor,
-  //                 accentColor: widget.accentColor,
-  //                 onServicesSelected: (services) {
-  //                 },
-  //               );
-  //             },
-  //             icon: Icon(Icons.date_range),
-  //             label: Text("Services"),
-  //             style: ElevatedButton.styleFrom(
-  //               backgroundColor: widget.primaryColor,
-  //               foregroundColor: Colors.white,
-  //               padding: EdgeInsets.symmetric(vertical: 16),
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 }

@@ -64,6 +64,8 @@ dependencies:
   webview_flutter_android: ^4.4.2
   webview_flutter_wkwebview: ^3.20.0
   flutter_datetime_picker_plus: ^2.2.0
+  firebase_messaging: ^15.2.7
+  flutter_local_notifications: ^19.2.1
 
 
 

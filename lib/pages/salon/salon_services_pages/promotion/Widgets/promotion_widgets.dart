@@ -213,7 +213,7 @@ class ServicePromotionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 AMÉLIORATION : Utilisation des nouvelles méthodes du modèle
+    // Utilisation des nouvelles méthodes du modèle
     final hasActivePromo = service.hasActivePromotion();
     final futurePromos = service.promotions_a_venir;
     final bool hasPromos = hasActivePromo || service.hasFuturePromotions();
@@ -315,7 +315,7 @@ class ServicePromotionCard extends StatelessWidget {
                             ),
                         ],
                       ),
-                      // 🔥 NOUVEAU : Affichage du nom du salon si disponible
+                      // Affichage du nom du salon si disponible
                       if (service.salonNom != null) ...[
                         const SizedBox(height: 2),
                         Row(

@@ -1,8 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:hairbnb/models/current_user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import '../firebase_token/fcm_token_service.dart';
 
 class CurrentUserProvider with ChangeNotifier {
   CurrentUser? _currentUser;
@@ -13,7 +16,7 @@ class CurrentUserProvider with ChangeNotifier {
 
   /// 🔄 Récupérer l'utilisateur depuis Django via token sécurisé
   Future<void> fetchCurrentUser() async {
-    if (_currentUser != null) return; // ✅ Déjà chargé
+    if (_currentUser != null) return;
 
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return;
@@ -33,6 +36,13 @@ class CurrentUserProvider with ChangeNotifier {
         final decodedBody = utf8.decode(response.bodyBytes);
         final data = json.decode(decodedBody);
         _currentUser = CurrentUser.fromJson(data['user']);
+
+        // Sauvegarder le token FCM après connexion réussie
+        //await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+        if (!kIsWeb) {
+          await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+        }
+
         notifyListeners();
       } else {
         print("⚠️ Utilisateur non trouvé ou non autorisé (${response.statusCode})");
@@ -67,8 +77,16 @@ class CurrentUserProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         final decodedBody = utf8.decode(response.bodyBytes);
         final data = json.decode(decodedBody);
+
         // ✅ Utiliser la même structure que fetchCurrentUser
         _currentUser = CurrentUser.fromJson(data['user']);
+
+        // Sauvegarder le token FCM après connexion réussie
+        //await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+        if (!kIsWeb) {
+          await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+        }
+
         notifyListeners();
         print("✅ Utilisateur rechargé avec succès");
       } else {

@@ -23,99 +23,99 @@ class SalonDetailsPage extends StatefulWidget {
 class _SalonDetailsPageState extends State<SalonDetailsPage> with SingleTickerProviderStateMixin {
   late Future<PublicSalonDetails> _salonFuture;
   late TabController _tabController;
-  bool _isFavorite = false;
-  bool _isLoadingFavorite = true;
-  FavoriteModel? _currentFavorite;
+  // bool _isFavorite = false;
+  // bool _isLoadingFavorite = true;
+  // FavoriteModel? _currentFavorite;
 
   @override
   void initState() {
     super.initState();
     _salonFuture = PublicSalonDetailsApi.getSalonDetails(widget.salonId);
     _tabController = TabController(length: 4, vsync: this);
-    _checkFavoriteStatus();
+    //_checkFavoriteStatus();
   }
 
   // Vérifier si le salon est déjà dans les favoris
-  Future<void> _checkFavoriteStatus() async {
-    if (widget.currentUserId <= 0) {
-      // L'utilisateur n'est pas connecté
-      setState(() {
-        _isFavorite = false;
-        _currentFavorite = null;
-        _isLoadingFavorite = false;
-      });
-      return;
-    }
-
-    setState(() => _isLoadingFavorite = true);
-
-    try {
-      final favorite = await FavoritesService.getFavoriteForSalon(
-          widget.currentUserId,
-          widget.salonId
-      );
-
-      if (mounted) {
-        setState(() {
-          _currentFavorite = favorite;
-          _isFavorite = favorite != null;
-          _isLoadingFavorite = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingFavorite = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la vérification des favoris: $e')),
-        );
-      }
-    }
-  }
+  // Future<void> _checkFavoriteStatus() async {
+  //   if (widget.currentUserId <= 0) {
+  //     // L'utilisateur n'est pas connecté
+  //     setState(() {
+  //       _isFavorite = false;
+  //       _currentFavorite = null;
+  //       _isLoadingFavorite = false;
+  //     });
+  //     return;
+  //   }
+  //
+  //   setState(() => _isLoadingFavorite = true);
+  //
+  //   try {
+  //     final favorite = await FavoritesService.getFavoriteForSalon(
+  //         widget.currentUserId,
+  //         widget.salonId
+  //     );
+  //
+  //     if (mounted) {
+  //       setState(() {
+  //         _currentFavorite = favorite;
+  //         _isFavorite = favorite != null;
+  //         _isLoadingFavorite = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     if (mounted) {
+  //       setState(() => _isLoadingFavorite = false);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Erreur lors de la vérification des favoris: $e')),
+  //       );
+  //     }
+  //   }
+  // }
 
   // Gérer l'ajout/suppression des favoris
-  Future<void> _toggleFavorite() async {
-    if (widget.currentUserId <= 0) {
-      // L'utilisateur n'est pas connecté
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vous devez être connecté pour ajouter des favoris')),
-      );
-      return;
-    }
-
-    setState(() => _isLoadingFavorite = true);
-
-    try {
-      // Utiliser toggleFavorite au lieu d'une logique personnalisée
-      final newFavoriteStatus = await FavoritesService.toggleFavorite(
-          widget.currentUserId,
-          widget.salonId
-      );
-
-      if (mounted) {
-        setState(() {
-          _isFavorite = newFavoriteStatus;
-          _isLoadingFavorite = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isFavorite
-                ? 'Salon ajouté aux favoris'
-                : 'Salon retiré des favoris'
-            ),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingFavorite = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
-      }
-    }
-  }
+  // Future<void> _toggleFavorite() async {
+  //   if (widget.currentUserId <= 0) {
+  //     // L'utilisateur n'est pas connecté
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Vous devez être connecté pour ajouter des favoris')),
+  //     );
+  //     return;
+  //   }
+  //
+  //   setState(() => _isLoadingFavorite = true);
+  //
+  //   try {
+  //     // Utiliser toggleFavorite au lieu d'une logique personnalisée
+  //     final newFavoriteStatus = await FavoritesService.toggleFavorite(
+  //         widget.currentUserId,
+  //         widget.salonId
+  //     );
+  //
+  //     if (mounted) {
+  //       setState(() {
+  //         _isFavorite = newFavoriteStatus;
+  //         _isLoadingFavorite = false;
+  //       });
+  //
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(_isFavorite
+  //               ? 'Salon ajouté aux favoris'
+  //               : 'Salon retiré des favoris'
+  //           ),
+  //           duration: const Duration(seconds: 1),
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     if (mounted) {
+  //       setState(() => _isLoadingFavorite = false);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Erreur: $e')),
+  //       );
+  //     }
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -211,28 +211,28 @@ class _SalonDetailsPageState extends State<SalonDetailsPage> with SingleTickerPr
                     ),
                   ),
                   actions: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        child: _isLoadingFavorite
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
-                          ),
-                        )
-                            : IconButton(
-                          icon: Icon(
-                            _isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: _isFavorite ? Colors.red : Colors.grey,
-                          ),
-                          onPressed: _toggleFavorite,
-                        ),
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.all(8.0),
+                    //   child: CircleAvatar(
+                    //     backgroundColor: Colors.white,
+                    //     child: _isLoadingFavorite
+                    //         ? const SizedBox(
+                    //       width: 20,
+                    //       height: 20,
+                    //       child: CircularProgressIndicator(
+                    //         strokeWidth: 2,
+                    //         valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                    //       ),
+                    //     )
+                    //         : IconButton(
+                    //       icon: Icon(
+                    //         _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    //         color: _isFavorite ? Colors.red : Colors.grey,
+                    //       ),
+                    //       onPressed: _toggleFavorite,
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
               ],

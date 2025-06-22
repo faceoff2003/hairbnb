@@ -24,7 +24,7 @@ class _MesAvisEnAttenteScreenState extends State<MesAvisEnAttenteScreen> {
     _chargerRdvEligibles();
   }
 
-  /// 🔄 Charger les RDV éligibles aux avis
+  /// Charger les RDV éligibles aux avis
   Future<void> _chargerRdvEligibles() async {
     try {
       setState(() {
@@ -42,7 +42,7 @@ class _MesAvisEnAttenteScreenState extends State<MesAvisEnAttenteScreen> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print("❌ Erreur lors du chargement des RDV: $e");
+        //print("❌ Erreur lors du chargement des RDV: $e");
       }
       if (mounted) {
         setState(() {
@@ -56,7 +56,7 @@ class _MesAvisEnAttenteScreenState extends State<MesAvisEnAttenteScreen> {
   /// 🔔 Navigation vers création d'avis
   void _naviguerVersCreationAvis(RdvEligible rdv) {
     if (kDebugMode) {
-      print("🔔 Navigation vers création avis pour RDV ${rdv.idRendezVous}");
+      //print("🔔 Navigation vers création avis pour RDV ${rdv.idRendezVous}");
     }
 
     // 🎯 Navigation vers l'écran de création d'avis

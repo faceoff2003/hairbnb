@@ -1,5 +1,6 @@
-﻿// lib/pages/salon_geolocalisation/salon_map_page.dart
+// lib/pages/salon_geolocalisation/salon_map_page.dart
 
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +10,7 @@ import 'package:hairbnb/pages/coiffeuses/services/geocoding_service.dart';
 import 'package:provider/provider.dart';
 import 'package:hairbnb/models/current_user.dart';
 import 'package:hairbnb/services/providers/current_user_provider.dart';
+import 'package:hairbnb/services/providers/cart_provider.dart'; // ✅ AJOUT : Import du CartProvider
 import 'package:hairbnb/widgets/bottom_nav_bar.dart';
 import '../chat/chat_page.dart';
 import '../coiffeuses/services/location_service.dart';
@@ -190,34 +192,188 @@ class _SalonsListPageState extends State<SalonsListPage> {
     }
   }
 
+  /// Affiche un message de succès centré
+  void _showSuccessDialog(BuildContext context, int nombreServices) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icône de succès
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 40,
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Titre
+                Text(
+                  "Succès !",
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                SizedBox(height: 8),
+                
+                // Message
+                Text(
+                  "$nombreServices service${nombreServices > 1 ? 's' : ''} ajouté${nombreServices > 1 ? 's' : ''} au panier !",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 24),
+                
+                // Boutons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text("Continuer"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey[600],
+                          side: BorderSide(color: Colors.grey[300]!),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Fermer ce dialog
+                          Navigator.pushNamed(context, '/cart'); // Aller au panier
+                        },
+                        child: Text("Voir panier"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-
-  // void _viewSalonDetails(SalonDetailsForGeo salon) {
-  //
-  //   if (currentUser != null) {
-  //     showModalBottomSheet(
-  //       context: context,
-  //       isScrollControlled: true,
-  //       backgroundColor: Colors.transparent,
-  //       builder: (context) => SalonDetailsModal(
-  //         // On peut maintenant utiliser '!' car on a vérifié que currentUser n'est pas null
-  //         currentUser: currentUser!,
-  //         salon: salon,
-  //         calculateDistance: _calculateDistance,
-  //         primaryColor: primaryColor,
-  //         accentColor: accentColor,
-  //       ),
-  //     );
-  //   } else {
-  //     // Optionnel : Afficher un message si l'utilisateur n'est pas connecté
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text("Veuillez vous connecter pour voir les détails du salon."),
-  //         backgroundColor: Colors.orange,
-  //       ),
-  //     );
-  //   }
-  // }
+  /// ✅ NOUVEAU : Affiche un message d'erreur centré
+  void _showErrorDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icône d'erreur
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: Colors.red,
+                    size: 40,
+                  ),
+                ),
+                SizedBox(height: 16),
+                
+                // Titre
+                Text(
+                  "Erreur",
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                SizedBox(height: 8),
+                
+                // Message
+                Text(
+                  "Impossible d'ajouter les services au panier.\nVeuillez réessayer.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 24),
+                
+                // Bouton
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text("OK"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -601,8 +757,7 @@ class _SalonsListPageState extends State<SalonsListPage> {
     );
   }
 
-
-  // Utilisation du nouveau modèle
+  // ✅ CORRIGÉ : Bouton Services avec logique d'ajout au panier
   Widget _buildCardActions(SalonDetailsForGeo salon) {
     final coiffeuses = salon.coiffeusesDetails;
     CoiffeuseDetailsForGeo? contactPersonne = salon.proprietaire;
@@ -617,7 +772,7 @@ class _SalonsListPageState extends State<SalonsListPage> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton.icon(
-            onPressed: () => _openItineraire(salon), // Change this line
+            onPressed: () => _openItineraire(salon),
             icon: const Icon(Icons.directions, size: 16),
             label: const Text("Itinéraire"),
             style: OutlinedButton.styleFrom(
@@ -628,20 +783,11 @@ class _SalonsListPageState extends State<SalonsListPage> {
               textStyle: const TextStyle(fontSize: 12),
             ),
           ),
-
           SizedBox(width: 8),
           OutlinedButton.icon(
             onPressed: () {
               if (contactPersonne != null && currentUser != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatPage(
-                      currentUser: currentUser!,
-                      otherUserId: contactPersonne!.uuid,
-                    ),
-                  ),
-                );
+                _openExistingOrNewChat(context, contactPersonne!.uuid);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -662,20 +808,19 @@ class _SalonsListPageState extends State<SalonsListPage> {
             ),
           ),
           SizedBox(width: 8),
-          // 🎯 BOUTON SERVICES - Version simplifiée
           ElevatedButton.icon(
-            onPressed: () {
-              SalonServicesModalService.afficherServicesModal(
+            onPressed: () async {
+              // ✅ NOUVEAU : Le modal gère maintenant tout l'ajout au panier avec notifications centrées
+              await SalonServicesModalService.afficherServicesModal(
                 context,
                 salon: salon,
+                currentUser: currentUser, // ✅ NOUVEAU : Passer currentUser
                 primaryColor: primaryColor,
                 accentColor: accentColor,
-                onServicesSelected: (services) {
-                  // Logique personnalisée si besoin
-                  print("✅ ${services.length} services sélectionnés pour ${salon.nom}");
-                  // Vous pouvez ajouter ici la logique pour ajouter au panier
-                },
               );
+
+              // ✅ Plus besoin de logique d'ajout au panier ici - le modal gère tout !
+              print("✅ Modal services fermé pour ${salon.nom}");
             },
             icon: Icon(Icons.design_services, size: 16),
             label: Text("Services"),
@@ -687,6 +832,88 @@ class _SalonsListPageState extends State<SalonsListPage> {
               textStyle: TextStyle(fontSize: 12),
             ),
           ),
+          // ElevatedButton.icon(
+          //   onPressed: () async {
+          //     try {
+          //       // 🔄 Afficher le modal et récupérer les services sélectionnés
+          //       final selectedServices = await SalonServicesModalService.afficherServicesModal(
+          //         context,
+          //         salon: salon,
+          //         primaryColor: primaryColor,
+          //         accentColor: accentColor,
+          //       );
+          //
+          //       // ✅ Si des services ont été sélectionnés, les ajouter au panier
+          //       if (selectedServices != null && selectedServices.isNotEmpty && currentUser != null) {
+          //         final cartProvider = Provider.of<CartProvider>(context, listen: false);
+          //
+          //         // 📦 Ajouter chaque service au panier
+          //         for (var service in selectedServices) {
+          //           await cartProvider.addToCart(service, currentUser!.idTblUser.toString());
+          //         }
+          //
+          //         _showSuccessDialog(context, selectedServices.length);
+          //
+          //         print("✅ ${selectedServices.length} services ajoutés au panier depuis la liste des salons pour ${salon.nom}");
+          //       }
+          //     } catch (e) {
+          //       // ❌ Gestion des erreurs avec message centré
+          //       print("❌ Erreur lors de l'ajout au panier depuis la liste des salons : $e");
+          //       _showErrorDialog(context);
+          //     }
+          //   },
+          //   icon: Icon(Icons.design_services, size: 16),
+          //   label: Text("Services"),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: primaryColor,
+          //     foregroundColor: Colors.white,
+          //     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          //     visualDensity: VisualDensity.compact,
+          //     textStyle: TextStyle(fontSize: 12),
+          //   ),
+          // )
+          // 🎯 BOUTON SERVICES - Version CORRIGÉE avec ajout au panier
+          // ElevatedButton.icon(
+          //   onPressed: () async {
+          //     try {
+          //       // 🔄 Afficher le modal et récupérer les services sélectionnés
+          //       final selectedServices = await SalonServicesModalService.afficherServicesModal(
+          //         context,
+          //         salon: salon,
+          //         primaryColor: primaryColor,
+          //         accentColor: accentColor,
+          //       );
+          //
+          //       // ✅ Si des services ont été sélectionnés, les ajouter au panier
+          //       if (selectedServices != null && selectedServices.isNotEmpty && currentUser != null) {
+          //         final cartProvider = Provider.of<CartProvider>(context, listen: false);
+          //
+          //         // 📦 Ajouter chaque service au panier
+          //         for (var service in selectedServices) {
+          //           await cartProvider.addToCart(service, currentUser!.idTblUser.toString());
+          //         }
+          //
+          //         // 🎯 NOUVEAU : Message centré au lieu de SnackBar
+          //         _showSuccessDialog(context, selectedServices.length);
+          //
+          //         print("✅ ${selectedServices.length} services ajoutés au panier depuis la liste des salons pour ${salon.nom}");
+          //       }
+          //     } catch (e) {
+          //       // ❌ Gestion des erreurs avec message centré
+          //       print("❌ Erreur lors de l'ajout au panier depuis la liste des salons : $e");
+          //       _showErrorDialog(context);
+          //     }
+          //   },
+          //   icon: Icon(Icons.design_services, size: 16),
+          //   label: Text("Services"),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: primaryColor,
+          //     foregroundColor: Colors.white,
+          //     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          //     visualDensity: VisualDensity.compact,
+          //     textStyle: TextStyle(fontSize: 12),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -782,4 +1009,48 @@ class _SalonsListPageState extends State<SalonsListPage> {
       ),
     );
   }
+
+  // ✅ AJOUTER CETTE MÉTHODE DANS LA CLASSE
+  Future<void> _openExistingOrNewChat(BuildContext context, String otherUserId) async {
+    try {
+      // 1. Générer l'ID de conversation standardisé
+      final chatId = currentUser!.uuid.compareTo(otherUserId) < 0
+          ? "${currentUser!.uuid}_$otherUserId"
+          : "${otherUserId}_${currentUser!.uuid}";
+
+      // 2. Vérifier dans Firebase
+      final databaseRef = FirebaseDatabase.instance.ref();
+      final chatSnapshot = await databaseRef.child(chatId).once();
+
+      if (chatSnapshot.snapshot.exists) {
+        // ✅ Conversation existe - naviguer directement
+        print("✅ Conversation existante trouvée : $chatId");
+        Navigator.push(context, MaterialPageRoute(
+          builder: (context) => ChatPage(
+            currentUser: currentUser!,
+            otherUserId: otherUserId,
+          ),
+        ));
+      } else {
+        // ✅ Nouvelle conversation - naviguer (ChatPage créera la conversation)
+        print("📝 Nouvelle conversation pour : $chatId");
+        Navigator.push(context, MaterialPageRoute(
+          builder: (context) => ChatPage(
+            currentUser: currentUser!,
+            otherUserId: otherUserId,
+          ),
+        ));
+      }
+    } catch (e) {
+      print("❌ Erreur lors de la vérification de conversation : $e");
+      // En cas d'erreur, naviguer quand même vers le chat
+      Navigator.push(context, MaterialPageRoute(
+        builder: (context) => ChatPage(
+          currentUser: currentUser!,
+          otherUserId: otherUserId,
+        ),
+      ));
+    }
+  }
 }
+

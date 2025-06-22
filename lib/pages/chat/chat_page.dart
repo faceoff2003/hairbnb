@@ -1,7 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hairbnb/services/firebase_token/token_service.dart';
 import 'package:hairbnb/widgets/custom_app_bar.dart';
 import 'package:hairbnb/models/current_user.dart';
 import 'package:hairbnb/models/message.dart';
@@ -10,6 +10,8 @@ import '../../services/my_drawer_service/my_drawer.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'chat_services/chat_notification_service.dart';
 
 class ChatPage extends StatefulWidget {
   final CurrentUser currentUser;
@@ -32,6 +34,7 @@ class _ChatPageState extends State<ChatPage> {
   late String chatId;
   CurrentUser? otherUser;
   bool isLoadingUser = true;
+  bool isFirebaseConnected = false;
   String? errorMessage;
   String? debugInfo;
   final String baseUrl = "https://www.hairbnb.site";
@@ -42,11 +45,85 @@ class _ChatPageState extends State<ChatPage> {
     chatId = widget.currentUser.uuid.compareTo(widget.otherUserId) < 0
         ? "${widget.currentUser.uuid}_${widget.otherUserId}"
         : "${widget.otherUserId}_${widget.currentUser.uuid}";
-    _fetchOtherUser();
+
+    _initializeChat();
   }
 
-  /// Récupération de l'autre utilisateur en utilisant TokenService
-  Future<void> _fetchOtherUser() async {
+  /// Initialisation complète du chat
+  Future<void> _initializeChat() async {
+    await _checkFirebaseConnection();
+    await _fetchOtherUserUnified();
+    await _ensureChatExists();
+  }
+
+  /// Vérifier la connexion Firebase
+  Future<void> _checkFirebaseConnection() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() {
+          errorMessage = "Non connecté à Firebase";
+          debugInfo = "❌ Firebase Auth: null";
+        });
+        return;
+      }
+
+      // Test de lecture Firebase
+      await databaseRef.child('test').once();
+
+      setState(() {
+        isFirebaseConnected = true;
+        debugInfo = "✅ Firebase connecté: ${user.uid}";
+      });
+
+      if (kDebugMode) {
+        print("✅ Firebase connecté: ${user.uid}");
+      }
+
+    } catch (e) {
+      setState(() {
+        isFirebaseConnected = false;
+        errorMessage = "Erreur Firebase: ${e.toString()}";
+        debugInfo = "❌ Firebase error: $e";
+      });
+
+      if (kDebugMode) {
+        print("❌ Erreur Firebase: $e");
+      }
+    }
+  }
+
+  /// S'assurer que la conversation existe dans Firebase
+  Future<void> _ensureChatExists() async {
+    if (!isFirebaseConnected) return;
+
+    try {
+      final chatSnapshot = await databaseRef.child(chatId).once();
+
+      if (!chatSnapshot.snapshot.exists) {
+        // Créer la conversation
+        await databaseRef.child(chatId).set({
+          'participants': {
+            widget.currentUser.uuid: true,
+            widget.otherUserId: true,
+          },
+          'created_at': ServerValue.timestamp,
+          'messages': {},
+        });
+
+        if (kDebugMode) {
+          print("✅ Conversation créée: $chatId");
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Erreur création conversation: $e");
+      }
+    }
+  }
+
+  /// ✅ Récupération utilisateur SIMPLIFIÉE et UNIFIÉE
+  Future<void> _fetchOtherUserUnified() async {
     if (!mounted) return;
 
     setState(() {
@@ -60,55 +137,34 @@ class _ChatPageState extends State<ChatPage> {
         print("🔍 Récupération des données pour l'utilisateur: ${widget.otherUserId}");
       }
 
-      // Utiliser le TokenService pour récupérer le token
-      final token = await TokenService.getAuthToken();
+      CurrentUser? user;
 
-      if (token == null) {
-        if (kDebugMode) {
-          print("❌ Aucun token d'authentification disponible");
-        }
-        setState(() {
-          errorMessage = "Erreur d'authentification";
-          debugInfo = "❌ Pas de token";
-          isLoadingUser = false;
-        });
-        return;
-      }
+      // Stratégie 1: Endpoint unifié get_user_profile (PRIORITÉ)
+      user = await _tryUnifiedEndpoint();
 
-      if (kDebugMode) {
-        print("🔑 Token récupéré (longueur: ${token.length})");
-      }
-
-      // Essayer différents endpoints
-      CurrentUser? user = await _tryUserEndpoints(token);
-
+      // Stratégie 2: Fallback vers l'endpoint coiffeuses
       user ??= await _tryCoiffeusesEndpoint();
+
+      // Stratégie 3: Dernier recours - endpoints clients
+      user ??= await _tryIndividualClientEndpoint();
 
       if (mounted) {
         setState(() {
           otherUser = user;
           isLoadingUser = false;
           if (user != null) {
-            debugInfo = "✅ Utilisateur trouvé: ${user.prenom} ${user.nom}";
+            debugInfo = "✅ Utilisateur trouvé: ${user.prenom} ${user.nom} (${user.type})";
             errorMessage = null;
+            _debugLogUserData(user, "Après récupération API");
           } else {
             errorMessage = "Utilisateur introuvable";
-            debugInfo = "❌ Aucune méthode n'a fonctionné";
+            debugInfo = "❌ Toutes les stratégies ont échoué";
           }
         });
-
-        if (user != null && kDebugMode) {
-          if (kDebugMode) {
-            print("✅ Utilisateur récupéré: ${user.prenom} ${user.nom}");
-          }
-          if (kDebugMode) {
-            print("📷 Photo profil: ${user.photoProfil}");
-          }
-        }
       }
     } catch (error) {
       if (kDebugMode) {
-        print("❌ Erreur lors de la récupération de l'utilisateur: $error");
+        print("❌ Erreur: $error");
       }
       if (mounted) {
         setState(() {
@@ -120,96 +176,65 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  /// Essayer les endpoints utilisateur avec le token
-  Future<CurrentUser?> _tryUserEndpoints(String token) async {
-    final endpoints = [
-      '/api/get_user_by_uuid/${widget.otherUserId}/',
-      '/api/get_current_user/${widget.otherUserId}/',
-      '/api/user_profile/${widget.otherUserId}/',
-    ];
-
-    for (String endpoint in endpoints) {
-      try {
-        final url = '$baseUrl$endpoint';
-        if (kDebugMode) {
-          print("🌐 Tentative endpoint: $url");
-        }
-
-        final response = await http.get(
-          Uri.parse(url),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        ).timeout(Duration(seconds: 10));
-
-        if (kDebugMode) {
-          print("📡 $endpoint - Status: ${response.statusCode}");
-        }
-
-        if (response.statusCode == 200) {
-          final decodedBody = utf8.decode(response.bodyBytes);
-          final data = json.decode(decodedBody);
-
-          // Essayer différentes structures de réponse
-          CurrentUser? user = _parseUserResponse(data);
-          if (user != null) {
-            if (kDebugMode) {
-              print("✅ Utilisateur trouvé via $endpoint");
-            }
-            return user;
-          }
-        } else if (response.statusCode == 401) {
-          if (kDebugMode) {
-            print("❌ Token expiré, tentative de refresh");
-          }
-          // Utiliser TokenService pour refresh
-          final newToken = await TokenService.getAuthToken(forceRefresh: true);
-          if (newToken != null) {
-            // Réessayer avec le nouveau token
-            return await _retryWithNewToken(endpoint, newToken);
-          }
-        }
-      } catch (error) {
-        if (kDebugMode) {
-          print("❌ Erreur avec $endpoint: $error");
-        }
-        continue;
-      }
-    }
-    return null;
-  }
-
-  /// Réessayer un endpoint avec un nouveau token
-  Future<CurrentUser?> _retryWithNewToken(String endpoint, String token) async {
+  /// ✅ Stratégie 1: Endpoint unifié (RECOMMANDÉ)
+  Future<CurrentUser?> _tryUnifiedEndpoint() async {
     try {
-      final url = '$baseUrl$endpoint';
+      if (kDebugMode) {
+        print("🔄 Test endpoint unifié pour: ${widget.otherUserId}");
+      }
+
       final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+        Uri.parse('$baseUrl/api/get_user_profile/${widget.otherUserId}/'),
+        headers: {"Content-Type": "application/json"},
       ).timeout(Duration(seconds: 10));
 
+      if (kDebugMode) {
+        print("📡 Statut endpoint unifié: ${response.statusCode}");
+      }
+
       if (response.statusCode == 200) {
-        final decodedBody = utf8.decode(response.bodyBytes);
-        final data = json.decode(decodedBody);
-        return _parseUserResponse(data);
+        final jsonData = jsonDecode(response.body);
+        if (jsonData["success"] == true && jsonData["data"] != null) {
+          final userData = jsonData["data"];
+
+          // ✅ Normaliser les champs pour éviter les incohérences
+          final normalizedData = {
+            'idTblUser': userData['idTblUser'] ?? 0,
+            'uuid': userData['uuid'] ?? widget.otherUserId,
+            'nom': userData['nom'] ?? '',
+            'prenom': userData['prenom'] ?? '',
+            'email': userData['email'] ?? '',
+            'numero_telephone': userData['numero_telephone'],
+            'date_naissance': userData['date_naissance'],
+            'is_active': userData['is_active'] ?? true,
+            'photo_profil': userData['photo_profil'], // Garder l'underscore
+            'type': userData['type'] ?? 'client',
+          };
+
+          if (kDebugMode) {
+            print("✅ Endpoint unifié réussi: ${userData['prenom']} ${userData['nom']}");
+          }
+
+          return CurrentUser.fromJson(normalizedData);
+        }
+      } else if (response.statusCode == 404) {
+        if (kDebugMode) {
+          print("ℹ️ Utilisateur non trouvé via endpoint unifié");
+        }
       }
     } catch (error) {
       if (kDebugMode) {
-        print("❌ Erreur retry $endpoint: $error");
+        print("❌ Erreur endpoint unifié: $error");
       }
     }
     return null;
   }
 
-  /// Essayer l'endpoint spécialisé pour les coiffeuses
+  /// ✅ Stratégie 2: Endpoint coiffeuses (MAINTENU pour compatibilité)
   Future<CurrentUser?> _tryCoiffeusesEndpoint() async {
     try {
       if (kDebugMode) {
-        print("🔄 Tentative endpoint coiffeuses");
+        print("🔄 Test endpoint coiffeuses pour: ${widget.otherUserId}");
       }
 
       final response = await http.post(
@@ -218,13 +243,20 @@ class _ChatPageState extends State<ChatPage> {
         body: jsonEncode({"uuids": [widget.otherUserId]}),
       ).timeout(Duration(seconds: 10));
 
+      if (kDebugMode) {
+        print("📡 Statut coiffeuses endpoint: ${response.statusCode}");
+      }
+
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body);
+
         if (jsonData["status"] == "success" && jsonData["coiffeuses"] is List) {
-          for (var coiffeuseData in jsonData["coiffeuses"]) {
+          final coiffeusesList = jsonData["coiffeuses"] as List;
+
+          for (var coiffeuseData in coiffeusesList) {
             if (coiffeuseData['uuid'] == widget.otherUserId) {
-              // Convertir les données coiffeuse en CurrentUser
-              final userData = {
+              // ✅ Convertir les données coiffeuse en CurrentUser NORMALISÉ
+              final normalizedData = {
                 'idTblUser': coiffeuseData['idTblUser'] ?? 0,
                 'uuid': coiffeuseData['uuid'],
                 'nom': coiffeuseData['nom'] ?? '',
@@ -233,12 +265,20 @@ class _ChatPageState extends State<ChatPage> {
                 'numero_telephone': coiffeuseData['numero_telephone'],
                 'date_naissance': coiffeuseData['date_naissance'],
                 'is_active': coiffeuseData['is_active'] ?? true,
-                'photo_profil': coiffeuseData['photo_profil'],
+                'photo_profil': coiffeuseData['photo_profil'], // Underscore cohérent
                 'type': 'coiffeuse',
               };
 
-              return CurrentUser.fromJson(userData);
+              if (kDebugMode) {
+                print("✅ Coiffeuse trouvée et convertie: ${normalizedData['prenom']} ${normalizedData['nom']}");
+              }
+
+              return CurrentUser.fromJson(normalizedData);
             }
+          }
+
+          if (kDebugMode) {
+            print("❌ UUID ${widget.otherUserId} non trouvé dans la liste des coiffeuses");
           }
         }
       }
@@ -250,67 +290,243 @@ class _ChatPageState extends State<ChatPage> {
     return null;
   }
 
-  /// Parser la réponse utilisateur
-  CurrentUser? _parseUserResponse(Map<String, dynamic> data) {
+  /// ✅ Stratégie 3: Endpoint client individuel
+  Future<CurrentUser?> _tryIndividualClientEndpoint() async {
     try {
-      if (data['user'] != null) {
-        return CurrentUser.fromJson(data['user']);
-      } else if (data['data'] != null && data['success'] == true) {
-        return CurrentUser.fromJson(data['data']);
-      } else if (data['uuid'] != null) {
-        return CurrentUser.fromJson(data);
-      }
-    } catch (e) {
       if (kDebugMode) {
-        print("❌ Erreur parsing utilisateur: $e");
+        print("🔄 Test client individuel pour: ${widget.otherUserId}");
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/get_client_by_uuid/${widget.otherUserId}/'),
+        headers: {"Content-Type": "application/json"},
+      ).timeout(Duration(seconds: 10));
+
+      if (kDebugMode) {
+        print("📡 Statut client: ${response.statusCode}");
+      }
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+
+        if (jsonData["status"] == "success" && jsonData["data"] != null) {
+          final clientData = jsonData["data"];
+
+          final normalizedData = {
+            'idTblUser': clientData['idTblUser'] ?? 0,
+            'uuid': clientData['uuid'] ?? widget.otherUserId,
+            'nom': clientData['nom'] ?? '',
+            'prenom': clientData['prenom'] ?? '',
+            'email': clientData['email'] ?? '',
+            'numero_telephone': clientData['numero_telephone'],
+            'date_naissance': clientData['date_naissance'],
+            'is_active': clientData['is_active'] ?? true,
+            'photo_profil': clientData['photo_profil'],
+            'type': 'client',
+          };
+
+          if (kDebugMode) {
+            print("✅ Client trouvé: ${normalizedData['prenom']} ${normalizedData['nom']}");
+          }
+
+          return CurrentUser.fromJson(normalizedData);
+        }
+      } else if (response.statusCode == 404) {
+        if (kDebugMode) {
+          print("ℹ️ Pas un client");
+        }
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        print("❌ Erreur client: $error");
       }
     }
     return null;
   }
 
-  /// Construire l'URL de la photo
+  /// ✅ Fonction de debug pour tracer les données utilisateur
+  void _debugLogUserData(CurrentUser? user, String context) {
+    if (kDebugMode && user != null) {
+      if (kDebugMode) {
+        print("🔍 [$context] Données utilisateur:");
+      }
+      if (kDebugMode) {
+        print("  - UUID: ${user.uuid}");
+      }
+      if (kDebugMode) {
+        print("  - Nom: ${user.nom}");
+      }
+      if (kDebugMode) {
+        print("  - Prénom: ${user.prenom}");
+      }
+      if (kDebugMode) {
+        print("  - Type: ${user.type}");
+      }
+      if (kDebugMode) {
+        print("  - Photo: ${user.photoProfil}");
+      }
+      if (kDebugMode) {
+        print("  - Email: ${user.email}");
+      }
+    }
+  }
+
+  /// ✅ Construire l'URL de la photo NORMALISÉE
   String? _getPhotoUrl(String? photoProfil) {
     if (photoProfil == null || photoProfil.isEmpty) {
       return null;
     }
 
+    // Si l'URL est déjà complète
     if (photoProfil.startsWith('http://') || photoProfil.startsWith('https://')) {
       return photoProfil;
     }
 
-    if (photoProfil.startsWith('/')) {
-      return baseUrl.replaceAll(RegExp(r'/$'), '') + photoProfil;
+    // Normaliser le chemin
+    String normalizedPath = photoProfil;
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/$normalizedPath';
     }
 
-    return '${baseUrl.replaceAll(RegExp(r'/$'), '')}/$photoProfil';
+    return '$baseUrl$normalizedPath';
   }
 
-  /// Forcer le rechargement de l'utilisateur
+  /// Envoyer un message avec gestion d'erreurs Firebase
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+
+    if (!isFirebaseConnected) {
+      _showErrorSnackBar("Pas de connexion Firebase");
+      return;
+    }
+
+    try {
+      // Vérifier l'authentification Firebase
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        _showErrorSnackBar("Non authentifié sur Firebase");
+        return;
+      }
+
+      Message newMessage = Message(
+        senderId: widget.currentUser.uuid,
+        receiverId: widget.otherUserId,
+        text: text.trim(),
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+
+      // Envoyer le message à Firebase
+      await databaseRef
+          .child(chatId)
+          .child("messages")
+          .push()
+          .set(newMessage.toJson());
+
+      if (kDebugMode) {
+        print("✅ Message envoyé à Firebase avec succès");
+      }
+
+      // Envoyer la notification push SEULEMENT si otherUser existe
+      if (otherUser != null) {
+        final senderName = "${widget.currentUser.prenom} ${widget.currentUser.nom}".trim();
+
+//         //-------------------------------
+// // 🔍 DEBUG: Tracer exactement ce qui est envoyé
+//         if (kDebugMode) {
+//           print("🔍 === DEBUG NOTIFICATION ===");
+//           print("🔍 Current user UUID: ${widget.currentUser.uuid}");
+//           print("🔍 Other user UUID: ${widget.otherUserId}");
+//           print("🔍 Chat ID: $chatId");
+//           print("🔍 === FIN DEBUG ===");
+//         }
+//
+// // 🔒 VALIDATION: Vérifier que l'ID du destinataire est correct
+//         if (widget.otherUserId.isEmpty || widget.otherUserId == widget.currentUser.uuid) {
+//           if (kDebugMode) {
+//             print("❌ ERREUR: ID destinataire invalide: ${widget.otherUserId}");
+//           }
+//           return;
+//         }
+// //-------------------------------
+//
+//         if (kDebugMode) {
+//           print("📤 Envoi notification à ${otherUser!.prenom} ${otherUser!.nom}");
+//           print("📤 Chat ID: $chatId");
+//           print("📤 Recipient ID: ${widget.otherUserId}");
+//         }
+
+        try {
+          await ChatNotificationService.sendMessageNotification(
+            chatId: chatId,
+            senderName: senderName,
+            messageContent: text.trim(),
+            recipientId: widget.otherUserId,
+          );
+
+          if (kDebugMode) {
+            print("✅ Notification envoyée avec succès");
+          }
+        } catch (notificationError) {
+          // Ne pas faire échouer l'envoi du message si la notification échoue
+          if (kDebugMode) {
+            print("⚠️ Erreur notification (message envoyé quand même): $notificationError");
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print("⚠️ otherUser est null - notification non envoyée");
+        }
+      }
+
+      // Vider le champ uniquement si l'envoi du message a réussi
+      _messageController.clear();
+
+      // Faire défiler vers le bas
+      Future.delayed(Duration(milliseconds: 300), () {
+        _scrollToBottom();
+      });
+
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Erreur envoi message: $e");
+      }
+
+      String errorMsg = "Impossible d'envoyer le message";
+      if (e.toString().contains('permission-denied')) {
+        errorMsg = "Permissions insuffisantes";
+      } else if (e.toString().contains('network')) {
+        errorMsg = "Problème de réseau";
+      }
+
+      _showErrorSnackBar(errorMsg);
+    }
+  }
+
+  /// Afficher une erreur à l'utilisateur
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: "Réessayer",
+            textColor: Colors.white,
+            onPressed: () => _initializeChat(),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Forcer le rechargement
   void _forceRefreshUser() async {
     setState(() {
       otherUser = null;
+      isFirebaseConnected = false;
     });
-    await _fetchOtherUser();
-  }
-
-  /// Envoyer un message
-  void sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-
-    Message newMessage = Message(
-      senderId: widget.currentUser.uuid,
-      receiverId: widget.otherUserId,
-      text: text.trim(),
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-
-    await databaseRef.child(chatId).child("messages").push().set(newMessage.toJson());
-    _messageController.clear();
-
-    Future.delayed(Duration(milliseconds: 300), () {
-      _scrollToBottom();
-    });
+    await _initializeChat();
   }
 
   void _scrollToBottom() {
@@ -350,14 +566,36 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     SizedBox(width: 10),
                     Expanded(child: _buildUserInfo()),
-                    if (kDebugMode && errorMessage != null)
+                    if (kDebugMode && (errorMessage != null || !isFirebaseConnected))
                       IconButton(
                         icon: Icon(Icons.refresh, color: Colors.blue),
                         onPressed: _forceRefreshUser,
-                        tooltip: "Recharger l'utilisateur",
+                        tooltip: "Recharger",
                       ),
                   ],
                 ),
+                // Indicateur de statut Firebase
+                if (!isFirebaseConnected)
+                  Container(
+                    margin: EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off, size: 16, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          "Connexion Firebase perdue",
+                          style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Infos de debug
                 if (kDebugMode && debugInfo != null)
                   Container(
                     margin: EdgeInsets.only(top: 8),
@@ -396,12 +634,39 @@ class _ChatPageState extends State<ChatPage> {
             child: StreamBuilder(
               stream: databaseRef.child(chatId).child("messages").onValue,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                // Gestion des erreurs de permissions
+                if (snapshot.hasError) {
+                  String errorMsg = snapshot.error.toString();
+                  if (errorMsg.contains('permission-denied')) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock, size: 64, color: Colors.red),
+                          SizedBox(height: 16),
+                          Text(
+                            "Permissions insuffisantes",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "Impossible d'accéder aux messages",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _forceRefreshUser,
+                            child: Text("Réessayer"),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return Center(child: Text("Erreur: $errorMsg"));
                 }
 
-                if (snapshot.hasError) {
-                  return const Center(child: Text("Erreur de chargement des messages."));
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
@@ -476,13 +741,18 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     controller: _messageController,
                     focusNode: _focusNode,
+                    enabled: isFirebaseConnected, // Désactiver si pas de connexion
                     onSubmitted: (text) {
                       sendMessage(text);
                     },
                     decoration: InputDecoration(
-                      hintText: "Écrire un message",
+                      hintText: isFirebaseConnected
+                          ? "Écrire un message"
+                          : "Connexion Firebase nécessaire",
                       filled: true,
-                      fillColor: Colors.grey.shade200,
+                      fillColor: isFirebaseConnected
+                          ? Colors.grey.shade200
+                          : Colors.grey.shade100,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -493,10 +763,13 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 const SizedBox(width: 10),
                 FloatingActionButton(
-                  onPressed: () {
-                    sendMessage(_messageController.text);
-                  },
+                  onPressed: isFirebaseConnected
+                      ? () => sendMessage(_messageController.text)
+                      : null,
                   mini: true,
+                  backgroundColor: isFirebaseConnected
+                      ? null
+                      : Colors.grey,
                   child: const Icon(Icons.send),
                 ),
               ],
@@ -511,7 +784,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// Construire l'image de profil
+  /// ✅ Construire l'image de profil NORMALISÉE
   ImageProvider _buildProfileImage() {
     if (otherUser == null) {
       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
@@ -534,7 +807,7 @@ class _ChatPageState extends State<ChatPage> {
     return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
   }
 
-  /// Construire les informations utilisateur
+  /// Construire les informations utilisateur avec type dynamique
   Widget _buildUserInfo() {
     if (isLoadingUser) {
       return Row(
@@ -558,11 +831,23 @@ class _ChatPageState extends State<ChatPage> {
             "${otherUser!.prenom} ${otherUser!.nom}".trim(),
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          if (otherUser!.type == 'coiffeuse')
-            Text(
-              "Coiffeuse",
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          SizedBox(height: 4),
+          // Badge avec le type d'utilisateur
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: otherUser!.type == 'coiffeuse' ? Colors.purple.shade600 : Colors.blue.shade600,
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Text(
+              otherUser!.type == 'coiffeuse' ? 'Coiffeuse' : 'Client',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       );
     } else {
@@ -574,7 +859,7 @@ class _ChatPageState extends State<ChatPage> {
             style: TextStyle(fontSize: 16, color: Colors.red),
           ),
           Text(
-            "ID: ${widget.otherUserId.substring(0, 8)}...",
+            "ID: ${widget.otherUserId.length > 8 ? widget.otherUserId.substring(0, 8) : widget.otherUserId}",
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
@@ -582,1486 +867,3 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 }
-
-
-
-
-
-
-
-
-// // Version améliorée de ChatPage avec debugging renforcé
-// // Remplacez le contenu de votre chat_page.dart par cette version
-//
-// import 'package:firebase_database/firebase_database.dart';
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
-// import 'package:hairbnb/services/providers/user_service.dart';
-// import 'package:hairbnb/services/firebase_token/token_service.dart';
-// import 'package:hairbnb/widgets/custom_app_bar.dart';
-// import 'package:hairbnb/models/current_user.dart';
-// import 'package:hairbnb/models/message.dart';
-// import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// import '../../services/my_drawer_service/my_drawer.dart';
-// import 'package:intl/intl.dart';
-//
-// class ChatPage extends StatefulWidget {
-//   final CurrentUser currentUser;
-//   final String otherUserId;
-//
-//   const ChatPage({super.key,
-//     required this.otherUserId,
-//     required this.currentUser,
-//   });
-//
-//   @override
-//   _ChatPageState createState() => _ChatPageState();
-// }
-//
-// class _ChatPageState extends State<ChatPage> {
-//   final databaseRef = FirebaseDatabase.instance.ref();
-//   final TextEditingController _messageController = TextEditingController();
-//   final ScrollController _scrollController = ScrollController();
-//   final FocusNode _focusNode = FocusNode();
-//   late String chatId;
-//   CurrentUser? otherUser;
-//   bool isLoadingUser = true;
-//   String? debugInfo;
-//   late String baseUrl = "https://www.hairbnb.site/";
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     chatId = widget.currentUser.uuid.compareTo(widget.otherUserId) < 0
-//         ? "${widget.currentUser.uuid}_${widget.otherUserId}"
-//         : "${widget.otherUserId}_${widget.currentUser.uuid}";
-//     _debugAuthenticationStatus();
-//     _fetchOtherUser();
-//   }
-//
-//   /// Debug : Vérifier le statut d'authentification
-//   Future<void> _debugAuthenticationStatus() async {
-//     final token = await TokenService.getAuthToken();
-//     if (token != null) {
-//       if (kDebugMode) {
-//         print("🔑 Token d'authentification disponible (longueur: ${token.length})");
-//       }
-//       setState(() {
-//         debugInfo = "✅ Token disponible";
-//       });
-//     } else {
-//       if (kDebugMode) {
-//         print("❌ Aucun token d'authentification disponible");
-//       }
-//       setState(() {
-//         debugInfo = "❌ Pas de token";
-//       });
-//     }
-//   }
-//
-//   Future<void> _fetchOtherUser() async {
-//     try {
-//       if (kDebugMode) {
-//         print("🔍 Récupération des données pour l'utilisateur: ${widget.otherUserId}");
-//       }
-//
-//       setState(() {
-//         debugInfo = "🔍 Recherche utilisateur...";
-//       });
-//
-//       // Utiliser la fonction qui suit le pattern du CurrentUserProvider
-//       final user = await fetchOtherUserComplete(widget.otherUserId);
-//
-//       if (mounted) {
-//         setState(() {
-//           otherUser = user;
-//           isLoadingUser = false;
-//           if (user != null) {
-//             debugInfo = "✅ Utilisateur trouvé: ${user.prenom} ${user.nom}";
-//           } else {
-//             debugInfo = "❌ Utilisateur introuvable pour UUID: ${widget.otherUserId}";
-//           }
-//         });
-//
-//         if (user != null) {
-//           if (kDebugMode) {
-//             print("✅ Utilisateur récupéré: ${user.prenom} ${user.nom}");
-//             print("📷 Photo profil: ${user.photoProfil}");
-//             print("📧 Email: ${user.email}");
-//             print("🆔 Type: ${user.type}");
-//           }
-//         } else {
-//           if (kDebugMode) {
-//             print("❌ Aucun utilisateur trouvé pour l'ID: ${widget.otherUserId}");
-//           }
-//
-//           // Essayer une recherche directe dans Firebase comme fallback
-//           _tryFirebaseFallback();
-//         }
-//       }
-//     } catch (error) {
-//       if (kDebugMode) {
-//         print("❌ Erreur lors de la récupération de l'utilisateur: $error");
-//       }
-//       if (mounted) {
-//         setState(() {
-//           isLoadingUser = false;
-//           debugInfo = "❌ Erreur: $error";
-//         });
-//       }
-//     }
-//   }
-//
-//   /// Fallback : Essayer de récupérer des infos depuis Firebase directement
-//   Future<void> _tryFirebaseFallback() async {
-//     if (kDebugMode) {
-//       print("🔄 Tentative de fallback Firebase...");
-//     }
-//
-//     setState(() {
-//       debugInfo = "🔄 Recherche dans Firebase...";
-//     });
-//
-//     try {
-//       // Chercher dans toutes les conversations pour voir si on trouve cet utilisateur
-//       final snapshot = await databaseRef.once();
-//       if (snapshot.snapshot.value != null) {
-//         final data = snapshot.snapshot.value as Map<dynamic, dynamic>;
-//
-//         for (var entry in data.entries) {
-//           final conversationKey = entry.key;
-//           final participants = conversationKey.split("_");
-//
-//           if (participants.contains(widget.otherUserId)) {
-//             if (kDebugMode) {
-//               print("✅ UUID trouvé dans Firebase conversation: $conversationKey");
-//             }
-//             setState(() {
-//               debugInfo = "⚠️ UUID trouvé dans Firebase mais pas dans l'API";
-//             });
-//             break;
-//           }
-//         }
-//       }
-//     } catch (e) {
-//       if (kDebugMode) {
-//         print("❌ Erreur fallback Firebase: $e");
-//       }
-//     }
-//   }
-//
-//   // Fonction pour construire l'URL de la photo correctement
-//   String? getPhotoUrl(String? photoProfil) {
-//     if (photoProfil == null || photoProfil.isEmpty) {
-//       return null;
-//     }
-//
-//     if (kDebugMode) {
-//       print("🖼️ Photo profil brute: '$photoProfil'");
-//     }
-//
-//     // Si l'URL est déjà complète, la retourner telle quelle
-//     if (photoProfil.startsWith('http://') || photoProfil.startsWith('https://')) {
-//       if (kDebugMode) {
-//         print("🖼️ URL complète détectée: $photoProfil");
-//       }
-//       return photoProfil;
-//     }
-//
-//     // Si l'URL commence par '/', la concaténer avec baseUrl sans slash final
-//     if (photoProfil.startsWith('/')) {
-//       final cleanBaseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
-//       final finalUrl = cleanBaseUrl + photoProfil;
-//       if (kDebugMode) {
-//         print("🖼️ URL construite (avec /): $finalUrl");
-//       }
-//       return finalUrl;
-//     }
-//
-//     // Sinon, construire l'URL complète
-//     final cleanBaseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
-//     final finalUrl = cleanBaseUrl + '/' + photoProfil;
-//     if (kDebugMode) {
-//       print("🖼️ URL construite (normale): $finalUrl");
-//     }
-//     return finalUrl;
-//   }
-//
-//   void sendMessage(String text) async {
-//     if (text.trim().isEmpty) return;
-//
-//     Message newMessage = Message(
-//       senderId: widget.currentUser.uuid,
-//       receiverId: widget.otherUserId,
-//       text: text.trim(),
-//       timestamp: DateTime.now(),
-//       isRead: false,
-//     );
-//
-//     await databaseRef.child(chatId).child("messages").push().set(newMessage.toJson());
-//     _messageController.clear();
-//
-//     Future.delayed(Duration(milliseconds: 300), () {
-//       _scrollToBottom();
-//     });
-//   }
-//
-//   void _scrollToBottom() {
-//     if (_scrollController.hasClients) {
-//       _scrollController.animateTo(
-//         _scrollController.position.maxScrollExtent,
-//         duration: Duration(milliseconds: 300),
-//         curve: Curves.easeOut,
-//       );
-//     }
-//   }
-//
-//   // Fonction pour forcer le rechargement de l'utilisateur
-//   void _forceRefreshUser() async {
-//     setState(() {
-//       isLoadingUser = true;
-//       debugInfo = "🔄 Rechargement forcé...";
-//     });
-//
-//     // Vider le cache et essayer de recharger
-//     clearUserCache();
-//     await _fetchOtherUser();
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: CustomAppBar(),
-//       drawer: MyDrawer(currentUser: widget.currentUser),
-//       body: Column(
-//         children: [
-//           Container(
-//             width: double.infinity,
-//             padding: EdgeInsets.all(10),
-//             color: Colors.grey.shade200,
-//             child: Column(
-//               children: [
-//                 Row(
-//                   children: [
-//                     CircleAvatar(
-//                       backgroundColor: Colors.blueAccent,
-//                       backgroundImage: _buildProfileImage(),
-//                       radius: 25,
-//                       onBackgroundImageError: (exception, stackTrace) {
-//                         if (kDebugMode) {
-//                           print("❌ Erreur de chargement d'image: $exception");
-//                         }
-//                       },
-//                     ),
-//                     SizedBox(width: 10),
-//                     Expanded(child: _buildUserName()),
-//                     // Bouton de debug uniquement en mode développement
-//                     if (kDebugMode)
-//                       IconButton(
-//                         icon: Icon(Icons.refresh, color: Colors.blue),
-//                         onPressed: _forceRefreshUser,
-//                         tooltip: "Recharger l'utilisateur",
-//                       ),
-//                   ],
-//                 ),
-//                 // Afficher les infos de debug en mode développement
-//                 if (kDebugMode && debugInfo != null)
-//                   Container(
-//                     margin: EdgeInsets.only(top: 8),
-//                     padding: EdgeInsets.all(8),
-//                     decoration: BoxDecoration(
-//                       color: Colors.blue.shade50,
-//                       borderRadius: BorderRadius.circular(4),
-//                       border: Border.all(color: Colors.blue.shade200),
-//                     ),
-//                     child: Row(
-//                       children: [
-//                         Icon(Icons.bug_report, size: 16, color: Colors.blue),
-//                         SizedBox(width: 8),
-//                         Expanded(
-//                           child: Text(
-//                             debugInfo!,
-//                             style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//               ],
-//             ),
-//           ),
-//           Expanded(
-//             child: StreamBuilder(
-//               stream: databaseRef.child(chatId).child("messages").onValue,
-//               builder: (context, snapshot) {
-//                 if (snapshot.connectionState == ConnectionState.waiting) {
-//                   return const Center(child: CircularProgressIndicator());
-//                 }
-//
-//                 if (snapshot.hasError) {
-//                   return const Center(child: Text("Erreur de chargement des messages."));
-//                 }
-//
-//                 if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-//                   final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-//                   List<Message> messages = data.entries.map((entry) {
-//                     return Message.fromJson(entry.value);
-//                   }).toList();
-//
-//                   messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-//
-//                   Future.delayed(Duration(milliseconds: 300), () {
-//                     _scrollToBottom();
-//                   });
-//
-//                   return ListView.builder(
-//                     controller: _scrollController,
-//                     itemCount: messages.length,
-//                     itemBuilder: (context, index) {
-//                       final msg = messages[index];
-//                       bool isSender = msg.senderId == widget.currentUser.uuid;
-//
-//                       return Padding(
-//                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-//                         child: Align(
-//                           alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-//                           child: Container(
-//                             constraints: BoxConstraints(
-//                               maxWidth: MediaQuery.of(context).size.width * 0.7,
-//                             ),
-//                             padding: const EdgeInsets.all(10),
-//                             decoration: BoxDecoration(
-//                               color: isSender ? Colors.blueAccent : Colors.grey.shade300,
-//                               borderRadius: BorderRadius.only(
-//                                 topLeft: const Radius.circular(10),
-//                                 topRight: const Radius.circular(10),
-//                                 bottomLeft: isSender ? const Radius.circular(10) : Radius.zero,
-//                                 bottomRight: isSender ? Radius.zero : const Radius.circular(10),
-//                               ),
-//                             ),
-//                             child: Column(
-//                               crossAxisAlignment: CrossAxisAlignment.start,
-//                               children: [
-//                                 Text(
-//                                   msg.text,
-//                                   style: TextStyle(color: isSender ? Colors.white : Colors.black),
-//                                 ),
-//                                 const SizedBox(height: 5),
-//                                 Align(
-//                                   alignment: Alignment.bottomRight,
-//                                   child: Text(
-//                                     DateFormat('dd/MM/yyyy HH:mm').format(msg.timestamp.toUtc()),
-//                                     style: const TextStyle(fontSize: 10, color: Colors.grey),
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         ),
-//                       );
-//                     },
-//                   );
-//                 }
-//                 return const Center(child: Text("Aucun message."));
-//               },
-//             ),
-//           ),
-//           Padding(
-//             padding: const EdgeInsets.all(8.0),
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: TextField(
-//                     controller: _messageController,
-//                     focusNode: _focusNode,
-//                     onSubmitted: (text) {
-//                       sendMessage(text);
-//                     },
-//                     decoration: InputDecoration(
-//                       hintText: "Écrire un message",
-//                       filled: true,
-//                       fillColor: Colors.grey.shade200,
-//                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-//                       border: OutlineInputBorder(
-//                         borderRadius: BorderRadius.circular(20),
-//                         borderSide: BorderSide.none,
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 10),
-//                 FloatingActionButton(
-//                   onPressed: () {
-//                     sendMessage(_messageController.text);
-//                   },
-//                   mini: true,
-//                   child: const Icon(Icons.send),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//       bottomNavigationBar: BottomNavBar(
-//         currentIndex: 3,
-//         onTap: (index) {
-//           // Navigation gérée dans le widget lui-même
-//         },
-//       ),
-//     );
-//   }
-//
-//   // Widget pour construire l'image de profil
-//   ImageProvider _buildProfileImage() {
-//     // Toujours utiliser l'avatar par défaut si pas d'utilisateur
-//     if (otherUser == null) {
-//       if (kDebugMode) {
-//         print("🖼️ Aucun utilisateur - utilisation de l'avatar par défaut");
-//       }
-//       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-//     }
-//
-//     final photoUrl = getPhotoUrl(otherUser?.photoProfil);
-//
-//     if (photoUrl != null) {
-//       if (kDebugMode) {
-//         print("🖼️ URL de l'image finale: $photoUrl");
-//       }
-//       // Vérifier que l'URL est valide avant de l'utiliser
-//       try {
-//         final uri = Uri.parse(photoUrl);
-//         if (uri.isAbsolute && (uri.scheme == 'http' || uri.scheme == 'https')) {
-//           return NetworkImage(photoUrl);
-//         } else {
-//           if (kDebugMode) {
-//             print("❌ URL invalide: $photoUrl");
-//           }
-//           return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-//         }
-//       } catch (e) {
-//         if (kDebugMode) {
-//           print("❌ Erreur de parsing d'URL: $e");
-//         }
-//         return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-//       }
-//     } else {
-//       if (kDebugMode) {
-//         print("🖼️ Pas de photo profil - utilisation de l'avatar par défaut");
-//       }
-//       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-//     }
-//   }
-//
-//   // Widget pour construire le nom de l'utilisateur
-//   Widget _buildUserName() {
-//     if (isLoadingUser) {
-//       return Row(
-//         children: [
-//           SizedBox(
-//             width: 16,
-//             height: 16,
-//             child: CircularProgressIndicator(strokeWidth: 2),
-//           ),
-//           SizedBox(width: 8),
-//           Text("Chargement...", style: TextStyle(fontSize: 14, color: Colors.grey)),
-//         ],
-//       );
-//     }
-//
-//     if (otherUser != null) {
-//       return Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             "${otherUser!.prenom ?? ''} ${otherUser!.nom ?? ''}".trim(),
-//             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//           ),
-//           if (kDebugMode)
-//             Text(
-//               "UUID: ${widget.otherUserId}",
-//               style: TextStyle(fontSize: 12, color: Colors.grey),
-//             ),
-//         ],
-//       );
-//     } else {
-//       return Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             "Utilisateur introuvable",
-//             style: TextStyle(fontSize: 16, color: Colors.red),
-//           ),
-//           if (kDebugMode)
-//             Text(
-//               "UUID: ${widget.otherUserId}",
-//               style: TextStyle(fontSize: 12, color: Colors.grey),
-//             ),
-//         ],
-//       );
-//     }
-//   }
-// }
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-// // import 'package:firebase_database/firebase_database.dart';
-// // import 'package:flutter/foundation.dart';
-// // import 'package:flutter/material.dart';
-// // import 'package:hairbnb/services/providers/user_service.dart';
-// // import 'package:hairbnb/services/firebase_token/token_service.dart';
-// // import 'package:hairbnb/widgets/custom_app_bar.dart';
-// // import 'package:hairbnb/models/current_user.dart';
-// // import 'package:hairbnb/models/message.dart';
-// // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // import '../../services/my_drawer_service/my_drawer.dart';
-// // import 'package:intl/intl.dart';
-// //
-// // class ChatPage extends StatefulWidget {
-// //   final CurrentUser currentUser;
-// //   final String otherUserId;
-// //
-// //   const ChatPage({super.key,
-// //     required this.otherUserId,
-// //     required this.currentUser,
-// //   });
-// //
-// //   @override
-// //   _ChatPageState createState() => _ChatPageState();
-// // }
-// //
-// // class _ChatPageState extends State<ChatPage> {
-// //   final databaseRef = FirebaseDatabase.instance.ref();
-// //   final TextEditingController _messageController = TextEditingController();
-// //   final ScrollController _scrollController = ScrollController();
-// //   final FocusNode _focusNode = FocusNode();
-// //   late String chatId;
-// //   CurrentUser? otherUser;
-// //   bool isLoadingUser = true;
-// //   late String baseUrl = "https://www.hairbnb.site/";
-// //
-// //   @override
-// //   void initState() {
-// //     super.initState();
-// //     chatId = widget.currentUser.uuid.compareTo(widget.otherUserId) < 0
-// //         ? "${widget.currentUser.uuid}_${widget.otherUserId}"
-// //         : "${widget.otherUserId}_${widget.currentUser.uuid}";
-// //     _debugAuthenticationStatus();
-// //     _fetchOtherUser();
-// //   }
-// //
-// //   /// Debug : Vérifier le statut d'authentification
-// //   Future<void> _debugAuthenticationStatus() async {
-// //     final token = await TokenService.getAuthToken();
-// //     if (token != null) {
-// //       if (kDebugMode) {
-// //         print("🔑 Token d'authentification disponible (longueur: ${token.length})");
-// //       }
-// //     } else {
-// //       if (kDebugMode) {
-// //         print("❌ Aucun token d'authentification disponible");
-// //       }
-// //     }
-// //   }
-// //
-// //   Future<void> _fetchOtherUser() async {
-// //     try {
-// //       if (kDebugMode) {
-// //         print("🔍 Récupération des données pour l'utilisateur: ${widget.otherUserId}");
-// //       }
-// //       // Utiliser la nouvelle fonction qui suit le pattern du CurrentUserProvider
-// //       final user = await fetchOtherUserComplete(widget.otherUserId);
-// //
-// //       if (mounted) {
-// //         setState(() {
-// //           otherUser = user;
-// //           isLoadingUser = false;
-// //         });
-// //
-// //         if (user != null) {
-// //           if (kDebugMode) {
-// //             print("✅ Utilisateur récupéré: ${user.prenom} ${user.nom}");
-// //             print("📷 Photo profil: ${user.photoProfil}");
-// //           }
-// //         } else {
-// //           if (kDebugMode) {
-// //             print("❌ Aucun utilisateur trouvé pour l'ID: ${widget.otherUserId}");
-// //           }
-// //         }
-// //       }
-// //     } catch (error) {
-// //       if (kDebugMode) {
-// //         print("❌ Erreur lors de la récupération de l'utilisateur: $error");
-// //       }
-// //       if (mounted) {
-// //         setState(() {
-// //           isLoadingUser = false;
-// //         });
-// //       }
-// //     }
-// //   }
-// //
-// //   // Fonction pour construire l'URL de la photo correctement
-// //   String? getPhotoUrl(String? photoProfil) {
-// //     if (photoProfil == null || photoProfil.isEmpty) {
-// //       return null;
-// //     }
-// //
-// //     if (kDebugMode) {
-// //       print("🖼️ Photo profil brute: '$photoProfil'");
-// //     }
-// //
-// //     // Si l'URL est déjà complète, la retourner telle quelle
-// //     if (photoProfil.startsWith('http://') || photoProfil.startsWith('https://')) {
-// //       if (kDebugMode) {
-// //         print("🖼️ URL complète détectée: $photoProfil");
-// //       }
-// //       return photoProfil;
-// //     }
-// //
-// //     // Si l'URL commence par '/', la concaténer avec baseUrl sans slash final
-// //     if (photoProfil.startsWith('/')) {
-// //       final cleanBaseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
-// //       final finalUrl = cleanBaseUrl + photoProfil;
-// //       if (kDebugMode) {
-// //         print("🖼️ URL construite (avec /): $finalUrl");
-// //       }
-// //       return finalUrl;
-// //     }
-// //
-// //     // Sinon, construire l'URL complète
-// //     final cleanBaseUrl = baseUrl.replaceAll(RegExp(r'/$'), '');
-// //     final finalUrl = cleanBaseUrl + '/' + photoProfil;
-// //     if (kDebugMode) {
-// //       print("🖼️ URL construite (normale): $finalUrl");
-// //     }
-// //     return finalUrl;
-// //   }
-// //
-// //   void sendMessage(String text) async {
-// //     if (text.trim().isEmpty) return;
-// //
-// //     Message newMessage = Message(
-// //       senderId: widget.currentUser.uuid,
-// //       receiverId: widget.otherUserId,
-// //       text: text.trim(),
-// //       timestamp: DateTime.now(),
-// //       isRead: false,
-// //     );
-// //
-// //     await databaseRef.child(chatId).child("messages").push().set(newMessage.toJson());
-// //     _messageController.clear();
-// //
-// //     Future.delayed(Duration(milliseconds: 300), () {
-// //       _scrollToBottom();
-// //     });
-// //   }
-// //
-// //   void _scrollToBottom() {
-// //     if (_scrollController.hasClients) {
-// //       _scrollController.animateTo(
-// //         _scrollController.position.maxScrollExtent,
-// //         duration: Duration(milliseconds: 300),
-// //         curve: Curves.easeOut,
-// //       );
-// //     }
-// //   }
-// //
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: CustomAppBar(),
-// //       drawer: MyDrawer(currentUser: widget.currentUser),
-// //       body: Column(
-// //         children: [
-// //           Container(
-// //             width: double.infinity,
-// //             padding: EdgeInsets.all(10),
-// //             color: Colors.grey.shade200,
-// //             child: Row(
-// //               children: [
-// //                 CircleAvatar(
-// //                   backgroundColor: Colors.blueAccent,
-// //                   backgroundImage: _buildProfileImage(),
-// //                   radius: 25,
-// //                   onBackgroundImageError: (exception, stackTrace) {
-// //                     if (kDebugMode) {
-// //                       print("❌ Erreur de chargement d'image: $exception");
-// //                     }
-// //                   },
-// //                 ),
-// //                 SizedBox(width: 10),
-// //                 _buildUserName(),
-// //               ],
-// //             ),
-// //           ),
-// //           Expanded(
-// //             child: StreamBuilder(
-// //               stream: databaseRef.child(chatId).child("messages").onValue,
-// //               builder: (context, snapshot) {
-// //                 if (snapshot.connectionState == ConnectionState.waiting) {
-// //                   return const Center(child: CircularProgressIndicator());
-// //                 }
-// //
-// //                 if (snapshot.hasError) {
-// //                   return const Center(child: Text("Erreur de chargement des messages."));
-// //                 }
-// //
-// //                 if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-// //                   final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-// //                   List<Message> messages = data.entries.map((entry) {
-// //                     return Message.fromJson(entry.value);
-// //                   }).toList();
-// //
-// //                   messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-// //
-// //                   Future.delayed(Duration(milliseconds: 300), () {
-// //                     _scrollToBottom();
-// //                   });
-// //
-// //                   return ListView.builder(
-// //                     controller: _scrollController,
-// //                     itemCount: messages.length,
-// //                     itemBuilder: (context, index) {
-// //                       final msg = messages[index];
-// //                       bool isSender = msg.senderId == widget.currentUser.uuid;
-// //
-// //                       return Padding(
-// //                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-// //                         child: Align(
-// //                           alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-// //                           child: Container(
-// //                             constraints: BoxConstraints(
-// //                               maxWidth: MediaQuery.of(context).size.width * 0.7,
-// //                             ),
-// //                             padding: const EdgeInsets.all(10),
-// //                             decoration: BoxDecoration(
-// //                               color: isSender ? Colors.blueAccent : Colors.grey.shade300,
-// //                               borderRadius: BorderRadius.only(
-// //                                 topLeft: const Radius.circular(10),
-// //                                 topRight: const Radius.circular(10),
-// //                                 bottomLeft: isSender ? const Radius.circular(10) : Radius.zero,
-// //                                 bottomRight: isSender ? Radius.zero : const Radius.circular(10),
-// //                               ),
-// //                             ),
-// //                             child: Column(
-// //                               crossAxisAlignment: CrossAxisAlignment.start,
-// //                               children: [
-// //                                 Text(
-// //                                   msg.text,
-// //                                   style: TextStyle(color: isSender ? Colors.white : Colors.black),
-// //                                 ),
-// //                                 const SizedBox(height: 5),
-// //                                 Align(
-// //                                   alignment: Alignment.bottomRight,
-// //                                   child: Text(
-// //                                     DateFormat('dd/MM/yyyy HH:mm').format(msg.timestamp.toUtc()),
-// //                                     style: const TextStyle(fontSize: 10, color: Colors.grey),
-// //                                   ),
-// //                                 ),
-// //                               ],
-// //                             ),
-// //                           ),
-// //                         ),
-// //                       );
-// //                     },
-// //                   );
-// //                 }
-// //                 return const Center(child: Text("Aucun message."));
-// //               },
-// //             ),
-// //           ),
-// //           Padding(
-// //             padding: const EdgeInsets.all(8.0),
-// //             child: Row(
-// //               children: [
-// //                 Expanded(
-// //                   child: TextField(
-// //                     controller: _messageController,
-// //                     focusNode: _focusNode,
-// //                     onSubmitted: (text) {
-// //                       sendMessage(text);
-// //                     },
-// //                     decoration: InputDecoration(
-// //                       hintText: "Écrire un message",
-// //                       filled: true,
-// //                       fillColor: Colors.grey.shade200,
-// //                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-// //                       border: OutlineInputBorder(
-// //                         borderRadius: BorderRadius.circular(20),
-// //                         borderSide: BorderSide.none,
-// //                       ),
-// //                     ),
-// //                   ),
-// //                 ),
-// //                 const SizedBox(width: 10),
-// //                 FloatingActionButton(
-// //                   onPressed: () {
-// //                     sendMessage(_messageController.text);
-// //                   },
-// //                   mini: true,
-// //                   child: const Icon(Icons.send),
-// //                 ),
-// //               ],
-// //             ),
-// //           ),
-// //         ],
-// //       ),
-// //       bottomNavigationBar: BottomNavBar(
-// //         currentIndex: 3, // 👈 Correspond à l'onglet "Messages"
-// //         onTap: (index) {
-// //           // rien ici, le contrôle se fait dans le widget lui-même
-// //         },
-// //       ),
-// //     );
-// //   }
-// //
-// //   // Widget pour construire l'image de profil
-// //   ImageProvider _buildProfileImage() {
-// //     // Toujours utiliser l'avatar par défaut si pas d'utilisateur
-// //     if (otherUser == null) {
-// //       if (kDebugMode) {
-// //         print("🖼️ Aucun utilisateur - utilisation de l'avatar par défaut");
-// //       }
-// //       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-// //     }
-// //
-// //     final photoUrl = getPhotoUrl(otherUser?.photoProfil);
-// //
-// //     if (photoUrl != null) {
-// //       if (kDebugMode) {
-// //         print("🖼️ URL de l'image finale: $photoUrl");
-// //       }
-// //       // Vérifier que l'URL est valide avant de l'utiliser
-// //       try {
-// //         final uri = Uri.parse(photoUrl);
-// //         if (uri.isAbsolute && (uri.scheme == 'http' || uri.scheme == 'https')) {
-// //           return NetworkImage(photoUrl);
-// //         } else {
-// //           if (kDebugMode) {
-// //             print("❌ URL invalide: $photoUrl");
-// //           }
-// //           return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-// //         }
-// //       } catch (e) {
-// //         if (kDebugMode) {
-// //           print("❌ Erreur de parsing d'URL: $e");
-// //         }
-// //         return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-// //       }
-// //     } else {
-// //       if (kDebugMode) {
-// //         print("🖼️ Pas de photo profil - utilisation de l'avatar par défaut");
-// //       }
-// //       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-// //     }
-// //   }
-// //
-// //   // Widget pour construire le nom de l'utilisateur
-// //   Widget _buildUserName() {
-// //     if (isLoadingUser) {
-// //       return Row(
-// //         children: [
-// //           SizedBox(
-// //             width: 16,
-// //             height: 16,
-// //             child: CircularProgressIndicator(strokeWidth: 2),
-// //           ),
-// //           SizedBox(width: 8),
-// //           Text("Chargement...", style: TextStyle(fontSize: 14, color: Colors.grey)),
-// //         ],
-// //       );
-// //     }
-// //
-// //     if (otherUser != null) {
-// //       return Text(
-// //         "${otherUser!.prenom ?? ''} ${otherUser!.nom ?? ''}".trim(),
-// //         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-// //       );
-// //     } else {
-// //       return Text(
-// //         "Utilisateur introuvable",
-// //         style: TextStyle(fontSize: 16, color: Colors.red),
-// //       );
-// //     }
-// //   }
-// // }
-// //
-// //
-// //
-// //
-// //
-// //
-// // // import 'package:firebase_database/firebase_database.dart';
-// // // import 'package:flutter/foundation.dart';
-// // // import 'package:flutter/material.dart';
-// // // import 'package:hairbnb/services/providers/user_service.dart';
-// // // import 'package:hairbnb/widgets/custom_app_bar.dart';
-// // // import 'package:hairbnb/models/current_user.dart';
-// // // import 'package:hairbnb/models/message.dart';
-// // // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // // import '../../services/my_drawer_service/my_drawer.dart';
-// // // import 'package:intl/intl.dart';
-// // //
-// // // class ChatPage extends StatefulWidget {
-// // //   final CurrentUser currentUser;
-// // //   final String otherUserId;
-// // //
-// // //   const ChatPage({super.key,
-// // //     required this.otherUserId,
-// // //     required this.currentUser,
-// // //   });
-// // //
-// // //   @override
-// // //   _ChatPageState createState() => _ChatPageState();
-// // // }
-// // //
-// // // class _ChatPageState extends State<ChatPage> {
-// // //   final databaseRef = FirebaseDatabase.instance.ref();
-// // //   final TextEditingController _messageController = TextEditingController();
-// // //   final ScrollController _scrollController = ScrollController();
-// // //   final FocusNode _focusNode = FocusNode();
-// // //   late String chatId;
-// // //   CurrentUser? otherUser;
-// // //   bool isLoadingUser = true;
-// // //   late String baseUrl = "https://www.hairbnb.site/";
-// // //
-// // //   @override
-// // //   void initState() {
-// // //     super.initState();
-// // //     chatId = widget.currentUser.uuid.compareTo(widget.otherUserId) < 0
-// // //         ? "${widget.currentUser.uuid}_${widget.otherUserId}"
-// // //         : "${widget.otherUserId}_${widget.currentUser.uuid}";
-// // //     _fetchOtherUser();
-// // //   }
-// // //
-// // //   Future<void> _fetchOtherUser() async {
-// // //     try {
-// // //       if (kDebugMode) {
-// // //         print("🔍 Récupération des données pour l'utilisateur: ${widget.otherUserId}");
-// // //       }
-// // //       final user = await fetchOtherUser(widget.otherUserId);
-// // //
-// // //       if (mounted) {
-// // //         setState(() {
-// // //           otherUser = user;
-// // //           isLoadingUser = false;
-// // //         });
-// // //
-// // //         if (user != null) {
-// // //           if (kDebugMode) {
-// // //             print("✅ Utilisateur récupéré: ${user.prenom} ${user.nom}");
-// // //           }
-// // //           if (kDebugMode) {
-// // //             print("📷 Photo profil: ${user.photoProfil}");
-// // //           }
-// // //         } else {
-// // //           if (kDebugMode) {
-// // //             print("❌ Aucun utilisateur trouvé pour l'ID: ${widget.otherUserId}");
-// // //           }
-// // //         }
-// // //       }
-// // //     } catch (error) {
-// // //       if (kDebugMode) {
-// // //         print("❌ Erreur lors de la récupération de l'utilisateur: $error");
-// // //       }
-// // //       if (mounted) {
-// // //         setState(() {
-// // //           isLoadingUser = false;
-// // //         });
-// // //       }
-// // //     }
-// // //   }
-// // //
-// // //   // Fonction pour construire l'URL de la photo correctement
-// // //   String? getPhotoUrl(String? photoProfil) {
-// // //     if (photoProfil == null || photoProfil.isEmpty) {
-// // //       return null;
-// // //     }
-// // //
-// // //     // Si l'URL est déjà complète, la retourner telle quelle
-// // //     if (photoProfil.startsWith('http://') || photoProfil.startsWith('https://')) {
-// // //       return photoProfil;
-// // //     }
-// // //
-// // //     // Si l'URL commence par '/', la concaténer avec baseUrl sans slash final
-// // //     if (photoProfil.startsWith('/')) {
-// // //       return baseUrl.replaceAll(RegExp(r'/$'), '') + photoProfil;
-// // //     }
-// // //
-// // //     // Sinon, construire l'URL complète
-// // //     return baseUrl + photoProfil;
-// // //   }
-// // //
-// // //   void sendMessage(String text) async {
-// // //     if (text.trim().isEmpty) return;
-// // //
-// // //     Message newMessage = Message(
-// // //       senderId: widget.currentUser.uuid,
-// // //       receiverId: widget.otherUserId,
-// // //       text: text.trim(),
-// // //       timestamp: DateTime.now(),
-// // //       isRead: false,
-// // //     );
-// // //
-// // //     await databaseRef.child(chatId).child("messages").push().set(newMessage.toJson());
-// // //     _messageController.clear();
-// // //
-// // //     Future.delayed(Duration(milliseconds: 300), () {
-// // //       _scrollToBottom();
-// // //     });
-// // //   }
-// // //
-// // //   void _scrollToBottom() {
-// // //     if (_scrollController.hasClients) {
-// // //       _scrollController.animateTo(
-// // //         _scrollController.position.maxScrollExtent,
-// // //         duration: Duration(milliseconds: 300),
-// // //         curve: Curves.easeOut,
-// // //       );
-// // //     }
-// // //   }
-// // //
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Scaffold(
-// // //       appBar: CustomAppBar(),
-// // //       drawer: MyDrawer(currentUser: widget.currentUser),
-// // //       body: Column(
-// // //         children: [
-// // //           Container(
-// // //             width: double.infinity,
-// // //             padding: EdgeInsets.all(10),
-// // //             color: Colors.grey.shade200,
-// // //             child: Row(
-// // //               children: [
-// // //                 CircleAvatar(
-// // //                   backgroundColor: Colors.blueAccent,
-// // //                   backgroundImage: _buildProfileImage(),
-// // //                   radius: 25,
-// // //                   onBackgroundImageError: (exception, stackTrace) {
-// // //                     if (kDebugMode) {
-// // //                       print("❌ Erreur de chargement d'image: $exception");
-// // //                     }
-// // //                   },
-// // //                 ),
-// // //                 SizedBox(width: 10),
-// // //                 _buildUserName(),
-// // //               ],
-// // //             ),
-// // //           ),
-// // //           Expanded(
-// // //             child: StreamBuilder(
-// // //               stream: databaseRef.child(chatId).child("messages").onValue,
-// // //               builder: (context, snapshot) {
-// // //                 if (snapshot.connectionState == ConnectionState.waiting) {
-// // //                   return const Center(child: CircularProgressIndicator());
-// // //                 }
-// // //
-// // //                 if (snapshot.hasError) {
-// // //                   return const Center(child: Text("Erreur de chargement des messages."));
-// // //                 }
-// // //
-// // //                 if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-// // //                   final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-// // //                   List<Message> messages = data.entries.map((entry) {
-// // //                     return Message.fromJson(entry.value);
-// // //                   }).toList();
-// // //
-// // //                   messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-// // //
-// // //                   Future.delayed(Duration(milliseconds: 300), () {
-// // //                     _scrollToBottom();
-// // //                   });
-// // //
-// // //                   return ListView.builder(
-// // //                     controller: _scrollController,
-// // //                     itemCount: messages.length,
-// // //                     itemBuilder: (context, index) {
-// // //                       final msg = messages[index];
-// // //                       bool isSender = msg.senderId == widget.currentUser.uuid;
-// // //
-// // //                       return Padding(
-// // //                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-// // //                         child: Align(
-// // //                           alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-// // //                           child: Container(
-// // //                             constraints: BoxConstraints(
-// // //                               maxWidth: MediaQuery.of(context).size.width * 0.7,
-// // //                             ),
-// // //                             padding: const EdgeInsets.all(10),
-// // //                             decoration: BoxDecoration(
-// // //                               color: isSender ? Colors.blueAccent : Colors.grey.shade300,
-// // //                               borderRadius: BorderRadius.only(
-// // //                                 topLeft: const Radius.circular(10),
-// // //                                 topRight: const Radius.circular(10),
-// // //                                 bottomLeft: isSender ? const Radius.circular(10) : Radius.zero,
-// // //                                 bottomRight: isSender ? Radius.zero : const Radius.circular(10),
-// // //                               ),
-// // //                             ),
-// // //                             child: Column(
-// // //                               crossAxisAlignment: CrossAxisAlignment.start,
-// // //                               children: [
-// // //                                 Text(
-// // //                                   msg.text,
-// // //                                   style: TextStyle(color: isSender ? Colors.white : Colors.black),
-// // //                                 ),
-// // //                                 const SizedBox(height: 5),
-// // //                                 Align(
-// // //                                   alignment: Alignment.bottomRight,
-// // //                                   child: Text(
-// // //                                     DateFormat('dd/MM/yyyy HH:mm').format(msg.timestamp.toUtc()),
-// // //                                     style: const TextStyle(fontSize: 10, color: Colors.grey),
-// // //                                   ),
-// // //                                 ),
-// // //                               ],
-// // //                             ),
-// // //                           ),
-// // //                         ),
-// // //                       );
-// // //                     },
-// // //                   );
-// // //                 }
-// // //                 return const Center(child: Text("Aucun message."));
-// // //               },
-// // //             ),
-// // //           ),
-// // //           Padding(
-// // //             padding: const EdgeInsets.all(8.0),
-// // //             child: Row(
-// // //               children: [
-// // //                 Expanded(
-// // //                   child: TextField(
-// // //                     controller: _messageController,
-// // //                     focusNode: _focusNode,
-// // //                     onSubmitted: (text) {
-// // //                       sendMessage(text);
-// // //                     },
-// // //                     decoration: InputDecoration(
-// // //                       hintText: "Écrire un message",
-// // //                       filled: true,
-// // //                       fillColor: Colors.grey.shade200,
-// // //                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-// // //                       border: OutlineInputBorder(
-// // //                         borderRadius: BorderRadius.circular(20),
-// // //                         borderSide: BorderSide.none,
-// // //                       ),
-// // //                     ),
-// // //                   ),
-// // //                 ),
-// // //                 const SizedBox(width: 10),
-// // //                 FloatingActionButton(
-// // //                   onPressed: () {
-// // //                     sendMessage(_messageController.text);
-// // //                   },
-// // //                   mini: true,
-// // //                   child: const Icon(Icons.send),
-// // //                 ),
-// // //               ],
-// // //             ),
-// // //           ),
-// // //         ],
-// // //       ),
-// // //       bottomNavigationBar: BottomNavBar(
-// // //         currentIndex: 3, // 👈 Correspond à l'onglet "Messages"
-// // //         onTap: (index) {
-// // //           // rien ici, le contrôle se fait dans le widget lui-même
-// // //         },
-// // //       ),
-// // //     );
-// // //   }
-// // //
-// // //   // Widget pour construire l'image de profil
-// // //   ImageProvider _buildProfileImage() {
-// // //     final photoUrl = getPhotoUrl(otherUser?.photoProfil);
-// // //
-// // //     if (photoUrl != null) {
-// // //       if (kDebugMode) {
-// // //         print("🖼️ URL de l'image construite: $photoUrl");
-// // //       }
-// // //       return NetworkImage(photoUrl);
-// // //     } else {
-// // //       if (kDebugMode) {
-// // //         print("🖼️ Utilisation de l'avatar par défaut");
-// // //       }
-// // //       return AssetImage("assets/logo_login/avatar.png") as ImageProvider;
-// // //     }
-// // //   }
-// // //
-// // //   // Widget pour construire le nom de l'utilisateur
-// // //   Widget _buildUserName() {
-// // //     if (isLoadingUser) {
-// // //       return Row(
-// // //         children: [
-// // //           SizedBox(
-// // //             width: 16,
-// // //             height: 16,
-// // //             child: CircularProgressIndicator(strokeWidth: 2),
-// // //           ),
-// // //           SizedBox(width: 8),
-// // //           Text("Chargement...", style: TextStyle(fontSize: 14, color: Colors.grey)),
-// // //         ],
-// // //       );
-// // //     }
-// // //
-// // //     if (otherUser != null) {
-// // //       return Text(
-// // //         "${otherUser!.prenom} ${otherUser!.nom}".trim(),
-// // //         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-// // //       );
-// // //     } else {
-// // //       return Text(
-// // //         "Utilisateur introuvable",
-// // //         style: TextStyle(fontSize: 16, color: Colors.red),
-// // //       );
-// // //     }
-// // //   }
-// // // }
-// // //
-// // //
-// // //
-// // //
-// // //
-// // //
-// // //
-// // // // import 'package:firebase_database/firebase_database.dart';
-// // // // import 'package:flutter/material.dart';
-// // // // import 'package:hairbnb/services/providers/user_service.dart';
-// // // // import 'package:hairbnb/widgets/custom_app_bar.dart';
-// // // // import 'package:hairbnb/models/current_user.dart';
-// // // // import 'package:hairbnb/models/message.dart';
-// // // // import 'package:hairbnb/widgets/bottom_nav_bar.dart';
-// // // // import '../../services/my_drawer_service/my_drawer.dart';
-// // // // import 'package:intl/intl.dart';
-// // // //
-// // // // class ChatPage extends StatefulWidget {
-// // // //   final CurrentUser currentUser;
-// // // //   final String otherUserId;
-// // // //
-// // // //   const ChatPage({super.key,
-// // // //     required this.otherUserId,
-// // // //     required this.currentUser,
-// // // //   });
-// // // //
-// // // //   @override
-// // // //   _ChatPageState createState() => _ChatPageState();
-// // // // }
-// // // //
-// // // // class _ChatPageState extends State<ChatPage> {
-// // // //   final databaseRef = FirebaseDatabase.instance.ref();
-// // // //   final TextEditingController _messageController = TextEditingController();
-// // // //   final ScrollController _scrollController = ScrollController();
-// // // //   final FocusNode _focusNode = FocusNode();
-// // // //   late String chatId;
-// // // //   CurrentUser? otherUser;
-// // // //   late String baseUrl = "https://www.hairbnb.site/";
-// // // //
-// // // //   @override
-// // // //   void initState() {
-// // // //     super.initState();
-// // // //     chatId = widget.currentUser.uuid.compareTo(widget.otherUserId) < 0
-// // // //         ? "${widget.currentUser.uuid}_${widget.otherUserId}"
-// // // //         : "${widget.otherUserId}_${widget.currentUser.uuid}";
-// // // //     _fetchOtherUser();
-// // // //   }
-// // // //
-// // // //   Future<void> _fetchOtherUser() async {
-// // // //     final user = await fetchOtherUser(widget.otherUserId);
-// // // //     setState(() {
-// // // //       otherUser = user;
-// // // //     });
-// // // //   }
-// // // //
-// // // //   void sendMessage(String text) async {
-// // // //     if (text.trim().isEmpty) return;
-// // // //
-// // // //     Message newMessage = Message(
-// // // //       senderId: widget.currentUser.uuid,
-// // // //       receiverId: widget.otherUserId,
-// // // //       text: text.trim(),
-// // // //       timestamp: DateTime.now(),
-// // // //       isRead: false,
-// // // //     );
-// // // //
-// // // //     await databaseRef.child(chatId).child("messages").push().set(newMessage.toJson());
-// // // //     _messageController.clear();
-// // // //
-// // // //     Future.delayed(Duration(milliseconds: 300), () {
-// // // //       _scrollToBottom();
-// // // //     });
-// // // //   }
-// // // //
-// // // //   void _scrollToBottom() {
-// // // //     if (_scrollController.hasClients) {
-// // // //       _scrollController.animateTo(
-// // // //         _scrollController.position.maxScrollExtent,
-// // // //         duration: Duration(milliseconds: 300),
-// // // //         curve: Curves.easeOut,
-// // // //       );
-// // // //     }
-// // // //   }
-// // // //
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return Scaffold(
-// // // //       appBar: CustomAppBar(),
-// // // //       drawer: MyDrawer(currentUser: widget.currentUser),
-// // // //       body: Column(
-// // // //         children: [
-// // // //           Container(
-// // // //             width: double.infinity,
-// // // //             padding: EdgeInsets.all(10),
-// // // //             color: Colors.grey.shade200,
-// // // //             child: Row(
-// // // //               children: [
-// // // //                 CircleAvatar(
-// // // //                   backgroundColor: Colors.blueAccent,
-// // // //                   backgroundImage: otherUser != null && otherUser!.photoProfil != null
-// // // //                       ? NetworkImage(baseUrl + otherUser!.photoProfil.toString())
-// // // //                       : AssetImage("assets/logo_login/avatar.png") as ImageProvider,
-// // // //                   radius: 25,
-// // // //                 ),
-// // // //                 SizedBox(width: 10),
-// // // //                 otherUser != null
-// // // //                     ? Text(
-// // // //                   "${otherUser!.prenom} ${otherUser!.nom}",
-// // // //                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-// // // //                 )
-// // // //                     : CircularProgressIndicator(),
-// // // //               ],
-// // // //             ),
-// // // //           ),
-// // // //           Expanded(
-// // // //             child: StreamBuilder(
-// // // //               stream: databaseRef.child(chatId).child("messages").onValue,
-// // // //               builder: (context, snapshot) {
-// // // //                 if (snapshot.connectionState == ConnectionState.waiting) {
-// // // //                   return const Center(child: CircularProgressIndicator());
-// // // //                 }
-// // // //
-// // // //                 if (snapshot.hasError) {
-// // // //                   return const Center(child: Text("Erreur de chargement des messages."));
-// // // //                 }
-// // // //
-// // // //                 if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
-// // // //                   final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-// // // //                   List<Message> messages = data.entries.map((entry) {
-// // // //                     return Message.fromJson(entry.value);
-// // // //                   }).toList();
-// // // //
-// // // //                   messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-// // // //
-// // // //                   Future.delayed(Duration(milliseconds: 300), () {
-// // // //                     _scrollToBottom();
-// // // //                   });
-// // // //
-// // // //                   return ListView.builder(
-// // // //                     controller: _scrollController,
-// // // //                     itemCount: messages.length,
-// // // //                     itemBuilder: (context, index) {
-// // // //                       final msg = messages[index];
-// // // //                       bool isSender = msg.senderId == widget.currentUser.uuid;
-// // // //
-// // // //                       return Padding(
-// // // //                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-// // // //                         child: Align(
-// // // //                           alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-// // // //                           child: Container(
-// // // //                             constraints: BoxConstraints(
-// // // //                               maxWidth: MediaQuery.of(context).size.width * 0.7,
-// // // //                             ),
-// // // //                             padding: const EdgeInsets.all(10),
-// // // //                             decoration: BoxDecoration(
-// // // //                               color: isSender ? Colors.blueAccent : Colors.grey.shade300,
-// // // //                               borderRadius: BorderRadius.only(
-// // // //                                 topLeft: const Radius.circular(10),
-// // // //                                 topRight: const Radius.circular(10),
-// // // //                                 bottomLeft: isSender ? const Radius.circular(10) : Radius.zero,
-// // // //                                 bottomRight: isSender ? Radius.zero : const Radius.circular(10),
-// // // //                               ),
-// // // //                             ),
-// // // //                             child: Column(
-// // // //                               crossAxisAlignment: CrossAxisAlignment.start,
-// // // //                               children: [
-// // // //                                 Text(
-// // // //                                   msg.text,
-// // // //                                   style: TextStyle(color: isSender ? Colors.white : Colors.black),
-// // // //                                 ),
-// // // //                                 const SizedBox(height: 5),
-// // // //                                 Align(
-// // // //                                   alignment: Alignment.bottomRight,
-// // // //                                   child: Text(
-// // // //                                     DateFormat('dd/MM/yyyy HH:mm').format(msg.timestamp.toUtc()),
-// // // //                                     style: const TextStyle(fontSize: 10, color: Colors.grey),
-// // // //                                   ),
-// // // //                                 ),
-// // // //                               ],
-// // // //                             ),
-// // // //                           ),
-// // // //                         ),
-// // // //                       );
-// // // //                     },
-// // // //                   );
-// // // //                 }
-// // // //                 return const Center(child: Text("Aucun message."));
-// // // //               },
-// // // //             ),
-// // // //           ),
-// // // //           Padding(
-// // // //             padding: const EdgeInsets.all(8.0),
-// // // //             child: Row(
-// // // //               children: [
-// // // //                 Expanded(
-// // // //                   child: TextField(
-// // // //                     controller: _messageController,
-// // // //                     focusNode: _focusNode,
-// // // //                     onSubmitted: (text) {
-// // // //                       sendMessage(text);
-// // // //                     },
-// // // //                     decoration: InputDecoration(
-// // // //                       hintText: "Écrire un message",
-// // // //                       filled: true,
-// // // //                       fillColor: Colors.grey.shade200,
-// // // //                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-// // // //                       border: OutlineInputBorder(
-// // // //                         borderRadius: BorderRadius.circular(20),
-// // // //                         borderSide: BorderSide.none,
-// // // //                       ),
-// // // //                     ),
-// // // //                   ),
-// // // //                 ),
-// // // //                 const SizedBox(width: 10),
-// // // //                 FloatingActionButton(
-// // // //                   onPressed: () {
-// // // //                     sendMessage(_messageController.text);
-// // // //                   },
-// // // //                   mini: true,
-// // // //                   child: const Icon(Icons.send),
-// // // //                 ),
-// // // //               ],
-// // // //             ),
-// // // //           ),
-// // // //         ],
-// // // //       ),
-// // // //       bottomNavigationBar: BottomNavBar(
-// // // //         currentIndex: 3, // 👈 Correspond à l'onglet "Messages"
-// // // //         onTap: (index) {
-// // // //           // rien ici, le contrôle se fait dans le widget lui-même
-// // // //         },
-// // // //       ),
-// // // //     );
-// // // //   }
-// // // // }

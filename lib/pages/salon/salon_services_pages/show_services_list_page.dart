@@ -134,10 +134,6 @@ class _ServicesListPageContentState extends State<_ServicesListPageContent> with
     }
   }
 
-  // 🔥 REMPLACEMENT de la méthode _fetchServices dans ServicesListPage
-
-  // 🔥 REMPLACER la méthode _fetchServices dans ServicesListPage
-
   Future<void> _fetchServices({bool loadMore = false}) async {
     if (loadMore) {
       setState(() => isLoadingMore = true);

@@ -13,19 +13,19 @@ class DebugAvisService {
 
   /// 🧪 1. Vérifier les informations utilisateur actuelles
   static Future<void> debugCurrentUser(BuildContext context) async {
-    print("\n🧪 === DEBUG UTILISATEUR ACTUEL ===");
+    // print("\n🧪 === DEBUG UTILISATEUR ACTUEL ===");
 
     try {
       final userProvider = Provider.of<CurrentUserProvider>(context, listen: false);
       final currentUser = userProvider.currentUser;
 
       if (currentUser != null) {
-        print("✅ Utilisateur connecté:");
-        print("   - Nom: ${currentUser.nom}");
-        print("   - Prénom: ${currentUser.prenom}");
-        print("   - UUID: ${currentUser.uuid}");
-        print("   - Email: ${currentUser.email}");
-        print("   - ID: ${currentUser.idTblUser}");
+        // print("✅ Utilisateur connecté:");
+        // print("   - Nom: ${currentUser.nom}");
+        // print("   - Prénom: ${currentUser.prenom}");
+        // print("   - UUID: ${currentUser.uuid}");
+        // print("   - Email: ${currentUser.email}");
+        // print("   - ID: ${currentUser.idTblUser}");
       } else {
         print("❌ Aucun utilisateur connecté dans CurrentUserProvider");
       }
@@ -36,16 +36,16 @@ class DebugAvisService {
 
   /// 🧪 2. Vérifier le token Firebase
   static Future<void> debugFirebaseToken() async {
-    print("\n🧪 === DEBUG TOKEN FIREBASE ===");
+    // print("\n🧪 === DEBUG TOKEN FIREBASE ===");
 
     try {
       final token = await TokenService.getAuthToken();
 
       if (token != null) {
-        print("✅ Token Firebase récupéré:");
-        print("   - Longueur: ${token.length} caractères");
-        print("   - Début: ${token.substring(0, 30)}...");
-        print("   - Fin: ...${token.substring(token.length - 10)}");
+        // print("✅ Token Firebase récupéré:");
+        // print("   - Longueur: ${token.length} caractères");
+        // print("   - Début: ${token.substring(0, 30)}...");
+        // print("   - Fin: ...${token.substring(token.length - 10)}");
 
         // Décoder le payload du JWT (partie centrale)
         try {
@@ -61,11 +61,11 @@ class DebugAvisService {
             final decoded = utf8.decode(base64Url.decode(payload));
             final payloadJson = json.decode(decoded);
 
-            print("✅ Payload du token:");
-            print("   - UID: ${payloadJson['uid'] ?? 'N/A'}");
-            print("   - Email: ${payloadJson['email'] ?? 'N/A'}");
-            print("   - Name: ${payloadJson['name'] ?? 'N/A'}");
-            print("   - Exp: ${payloadJson['exp'] ?? 'N/A'}");
+            // print("✅ Payload du token:");
+            // print("   - UID: ${payloadJson['uid'] ?? 'N/A'}");
+            // print("   - Email: ${payloadJson['email'] ?? 'N/A'}");
+            // print("   - Name: ${payloadJson['name'] ?? 'N/A'}");
+            // print("   - Exp: ${payloadJson['exp'] ?? 'N/A'}");
           }
         } catch (e) {
           print("⚠️ Impossible de décoder le payload: $e");
@@ -80,7 +80,7 @@ class DebugAvisService {
 
   /// 🧪 3. Tester l'API sans authentification (endpoint public)
   static Future<void> debugApiPublic() async {
-    print("\n🧪 === DEBUG API PUBLIQUE ===");
+    //print("\n🧪 === DEBUG API PUBLIQUE ===");
 
     try {
       final response = await http.get(
@@ -88,9 +88,9 @@ class DebugAvisService {
         headers: {'Content-Type': 'application/json'},
       );
 
-      print("📡 Test endpoint public: GET $baseUrl/salon/1/avis/");
-      print("📡 Statut: ${response.statusCode}");
-      print("📄 Réponse: ${response.body.substring(0, 200)}...");
+      // print("📡 Test endpoint public: GET $baseUrl/salon/1/avis/");
+      // print("📡 Statut: ${response.statusCode}");
+      // print("📄 Réponse: ${response.body.substring(0, 200)}...");
 
       if (response.statusCode == 200 || response.statusCode == 404) {
         print("✅ API accessible - pas de problème réseau");
@@ -104,16 +104,16 @@ class DebugAvisService {
 
   /// 🧪 4. Tester l'endpoint problématique avec plus de détails
   static Future<void> debugApiMesRdv() async {
-    print("\n🧪 === DEBUG API MES RDV ===");
+    //print("\n🧪 === DEBUG API MES RDV ===");
 
     try {
       final token = await TokenService.getAuthToken();
       if (token == null) {
-        print("❌ Pas de token pour le test");
+        //print("❌ Pas de token pour le test");
         return;
       }
 
-      print("🔄 Test de l'endpoint mes-rdv-avis-en-attente...");
+      //print("🔄 Test de l'endpoint mes-rdv-avis-en-attente...");
 
       final response = await http.get(
         Uri.parse('$baseUrl/mes-rdv-avis-en-attente/'),
@@ -123,9 +123,9 @@ class DebugAvisService {
         },
       );
 
-      print("📡 Statut: ${response.statusCode}");
-      print("📄 Headers reçus: ${response.headers}");
-      print("📄 Corps complet: ${response.body}");
+      // print("📡 Statut: ${response.statusCode}");
+      // print("📄 Headers reçus: ${response.headers}");
+      // print("📄 Corps complet: ${response.body}");
 
       if (response.statusCode == 500) {
         try {
@@ -144,13 +144,13 @@ class DebugAvisService {
 
   /// 🧪 5. Test complet de debug
   static Future<void> debugComplet(BuildContext context) async {
-    print("\n🚨 === DÉBUT DEBUG COMPLET ===");
+    //print("\n🚨 === DÉBUT DEBUG COMPLET ===");
 
     await debugCurrentUser(context);
     await debugFirebaseToken();
     await debugApiPublic();
     await debugApiMesRdv();
 
-    print("\n🚨 === FIN DEBUG COMPLET ===");
+    //print("\n🚨 === FIN DEBUG COMPLET ===");
   }
 }
