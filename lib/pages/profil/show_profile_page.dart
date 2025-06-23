@@ -4,6 +4,7 @@ import 'package:hairbnb/pages/profil/services/image_util.dart';
 import 'package:hairbnb/pages/profil/services/update_services/adress_update/adress_change_widget.dart';
 import 'package:provider/provider.dart';
 import '../../models/current_user.dart';
+import '../../public_salon_details/favorites_salons_page.dart';
 import '../../services/auth_services/logout_service.dart';
 import '../../services/providers/current_user_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
@@ -193,18 +194,18 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final CurrentUser user = Provider.of<CurrentUserProvider>(context).currentUser ?? widget.currentUser;
 //-----------------------------------------------------------------------------------------------------
-    // DEBUG TEMPORAIRE - à retirer après test
-    if (kDebugMode) {
-      print("=== DEBUG PROFIL ===");
-      print("user.type: ${user.type}");
-      print("user.role: ${user.role}");
-      print("user.isCoiffeuseUser(): ${user.isCoiffeuseUser()}");
-      print("user.coiffeuse: ${user.coiffeuse}");
-      print("user.coiffeuse?.salon: ${user.coiffeuse?.salon}");
-      print("_isAdmin(user): ${_isAdmin(user)}");
-      print("_isCoiffeuseProprietaire(user): ${_isCoiffeuseProprietaire(user)}");
-      print("===================");
-    }
+//     // DEBUG TEMPORAIRE - à retirer après test
+//     if (kDebugMode) {
+//       print("=== DEBUG PROFIL ===");
+//       print("user.type: ${user.type}");
+//       print("user.role: ${user.role}");
+//       print("user.isCoiffeuseUser(): ${user.isCoiffeuseUser()}");
+//       print("user.coiffeuse: ${user.coiffeuse}");
+//       print("user.coiffeuse?.salon: ${user.coiffeuse?.salon}");
+//       print("_isAdmin(user): ${_isAdmin(user)}");
+//       print("_isCoiffeuseProprietaire(user): ${_isCoiffeuseProprietaire(user)}");
+//       print("===================");
+//     }
 //-----------------------------------------------------------------------------------------------------
     return Scaffold(
       backgroundColor: lightBackground,
@@ -399,6 +400,23 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                           },
                           isHighlighted: true,
                         ),
+                      if (!user.isCoiffeuseUser() && user.type?.toLowerCase() == 'client')
+                        ... [
+                        _actionTile(
+                          Icons.favorite,
+                          "Mes Favoris",
+                              () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FavoriteSalonsPage(
+                                  currentUserId: user.idTblUser,
+                                ),
+                              ),
+                            );
+                          },
+                          isHighlighted: true,
+                        ),
                       _actionTile(
                         Icons.rate_review,
                         "Mes avis",
@@ -427,6 +445,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         },
                         isHighlighted: true,
                       ),
+                        ],
+
 
                       // Suppression du compte
                       _actionTile(

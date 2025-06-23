@@ -1,15 +1,16 @@
 ﻿// pages/coiffeuse_dashboard/coiffeuse_dashboard_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../../models/current_user.dart';
 import '../../services/firebase_token/token_service.dart';
 import '../../widgets/bottom_nav_bar.dart';
+import '../../widgets/custom_app_bar.dart';
 import '../ai_chat/coiffeuse_ai/coiffeuse_ai_conversations_list.dart';
 import '../ai_chat/services/coiffeuse_ai_chat_service.dart';
 import '../avis/avis_clients_coiffeuse_page.dart';
 import '../commandes/coiffeuse_commande_page.dart';
 import '../horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
+import '../revenus/revenus_page.dart';
 import '../salon/salon_services_pages/api/salon_by_coiffeuse_api.dart';
 import '../salon/salon_services_pages/promotion/promotions_management_page.dart';
 import '../salon/salon_services_pages/show_services_list_page.dart';
@@ -195,29 +196,10 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 
     return Scaffold(
       backgroundColor: lightBackground,
-      appBar: AppBar(
-        backgroundColor: primaryOrange,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.construction, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Text(
-              "Espace Coiffeuse",
-              style: TextStyle(
-                fontSize: isSmallScreen ? 18 : 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
+
+      // ✅ AJOUT : CustomAppBar
+      appBar: const CustomAppBar(),
+
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryOrange))
           : FadeTransition(
@@ -457,6 +439,94 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 
                 SizedBox(height: 16),
 
+                SizedBox(
+                  width: double.infinity,
+                  child: Card(
+                    elevation: 8,
+                    shadowColor: Colors.green.withOpacity(0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.green.shade400,
+                            Colors.green.shade600,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RevenusPage(),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.euro_symbol,
+                                    color: Colors.white,
+                                    size: isSmallScreen ? 28 : 32,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Mes Revenus",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: isSmallScreen ? 16 : 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        "Suivez vos gains, statistiques et historique des paiements",
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 12 : 14,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
                 // Assistant IA - Carte spéciale
                 SizedBox(
                   width: double.infinity,
@@ -543,7 +613,8 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
           ),
         ),
       ),
-      // Ajout de la BottomNavBar
+
+      // ✅ AJOUT : BottomNavBar
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -638,17 +709,23 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 
 
 
+
+
+
+
 // // pages/coiffeuse_dashboard/coiffeuse_dashboard_page.dart
 // import 'package:flutter/material.dart';
 // import 'package:google_fonts/google_fonts.dart';
 //
 // import '../../models/current_user.dart';
 // import '../../services/firebase_token/token_service.dart';
+// import '../../widgets/bottom_nav_bar.dart';
 // import '../ai_chat/coiffeuse_ai/coiffeuse_ai_conversations_list.dart';
 // import '../ai_chat/services/coiffeuse_ai_chat_service.dart';
 // import '../avis/avis_clients_coiffeuse_page.dart';
 // import '../commandes/coiffeuse_commande_page.dart';
 // import '../horaires_coiffeuse/disponibilite_coiffeuse_page.dart';
+// import '../revenus/revenus_page.dart';
 // import '../salon/salon_services_pages/api/salon_by_coiffeuse_api.dart';
 // import '../salon/salon_services_pages/promotion/promotions_management_page.dart';
 // import '../salon/salon_services_pages/show_services_list_page.dart';
@@ -672,6 +749,7 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 //   late AnimationController _animationController;
 //   late Animation<double> _fadeAnimation;
 //   bool _isLoading = false;
+//   int _currentIndex = 0; // Index pour la navbar
 //
 //   // Couleurs
 //   final Color primaryOrange = Colors.orange;
@@ -1095,6 +1173,92 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 //
 //                 SizedBox(height: 16),
 //
+//                 SizedBox(
+//                   width: double.infinity,
+//                   child: Card(
+//                     elevation: 8,
+//                     shadowColor: Colors.green.withOpacity(0.3),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(16),
+//                     ),
+//                     child: Container(
+//                       decoration: BoxDecoration(
+//                         gradient: LinearGradient(
+//                           colors: [
+//                             Colors.green.shade400,
+//                             Colors.green.shade600,
+//                           ],
+//                           begin: Alignment.topLeft,
+//                           end: Alignment.bottomRight,
+//                         ),
+//                         borderRadius: BorderRadius.circular(16),
+//                       ),
+//                       child: Material(
+//                         color: Colors.transparent,
+//                         child: InkWell(
+//                           borderRadius: BorderRadius.circular(16),
+//                           onTap: () {
+//                             Navigator.push(
+//                               context,
+//                               MaterialPageRoute(
+//                                 builder: (context) => const RevenusPage(),
+//                               ),
+//                             );
+//                           },
+//                           child: Padding(
+//                             padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+//                             child: Row(
+//                               children: [
+//                                 Container(
+//                                   padding: EdgeInsets.all(12),
+//                                   decoration: BoxDecoration(
+//                                     color: Colors.white.withOpacity(0.2),
+//                                     borderRadius: BorderRadius.circular(12),
+//                                   ),
+//                                   child: Icon(
+//                                     Icons.euro_symbol,
+//                                     color: Colors.white,
+//                                     size: isSmallScreen ? 28 : 32,
+//                                   ),
+//                                 ),
+//                                 SizedBox(width: 16),
+//                                 Expanded(
+//                                   child: Column(
+//                                     crossAxisAlignment: CrossAxisAlignment.start,
+//                                     children: [
+//                                       Text(
+//                                         "Mes Revenus",
+//                                         style: GoogleFonts.poppins(
+//                                           fontSize: isSmallScreen ? 16 : 18,
+//                                           fontWeight: FontWeight.bold,
+//                                           color: Colors.white,
+//                                         ),
+//                                       ),
+//                                       SizedBox(height: 4),
+//                                       Text(
+//                                         "Suivez vos gains, statistiques et historique des paiements",
+//                                         style: TextStyle(
+//                                           fontSize: isSmallScreen ? 12 : 14,
+//                                           color: Colors.white70,
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 ),
+//                                 Icon(
+//                                   Icons.arrow_forward_ios,
+//                                   color: Colors.white,
+//                                   size: 16,
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//
 //                 // Assistant IA - Carte spéciale
 //                 SizedBox(
 //                   width: double.infinity,
@@ -1180,6 +1344,15 @@ class _CoiffeuseDashboardPageState extends State<CoiffeuseDashboardPage>
 //             ],
 //           ),
 //         ),
+//       ),
+//       // Ajout de la BottomNavBar
+//       bottomNavigationBar: BottomNavBar(
+//         currentIndex: _currentIndex,
+//         onTap: (index) {
+//           setState(() {
+//             _currentIndex = index;
+//           });
+//         },
 //       ),
 //     );
 //   }

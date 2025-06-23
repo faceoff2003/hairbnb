@@ -4,13 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hairbnb/models/current_user.dart';
-import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../models/salon_details_geo.dart';
 import '../../../models/public_salon_details.dart';
 import '../../../public_salon_details/api/PublicSalonDetailsApi.dart';
 import '../../../public_salon_details/modals/show_horaires_modal.dart';
+import '../../../public_salon_details/services/favorites_services.dart';
 import '../../chat/chat_page.dart';
 import '../itineraire_page.dart';
 import 'show_salon_services_modal_service/show_salon_services_modal_service.dart';
@@ -38,11 +37,14 @@ class SalonDetailsModal extends StatefulWidget {
 class _SalonDetailsModalState extends State<SalonDetailsModal> {
   bool isLoadingDetails = false;
   PublicSalonDetails? salonDetails;
+  bool _isFavorite = false;
+  bool _isLoadingFavorite = false;
 
   @override
   void initState() {
     super.initState();
     _chargerDetailsComplets();
+    _verifierFavori();
   }
 
   /// ✅ NOUVEAU : Récupérer les détails complets du salon (avec horaires)
@@ -67,6 +69,194 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
       });
     }
   }
+
+  Future<void> _toggleFavori() async {
+    setState(() {
+      _isLoadingFavorite = true;
+    });
+
+    try {
+      final newState = await FavoritesService.toggleFavorite(
+        widget.currentUser.idTblUser,
+        widget.salon.idTblSalon,
+      );
+
+      setState(() {
+        _isFavorite = newState;
+      });
+
+      // Message centré à la place du SnackBar
+      _showFavoriteDialog(_isFavorite);
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur toggle favori: $e');
+      }
+      _showErrorDialog();
+    } finally {
+      setState(() {
+        _isLoadingFavorite = false;
+      });
+    }
+  }
+
+  void _showFavoriteDialog(bool isFavorite) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icône
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isFavorite ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFavorite ? Icons.favorite : Icons.heart_broken,
+                    color: isFavorite ? Colors.red : Colors.orange,
+                    size: 30,
+                  ),
+                ),
+                SizedBox(height: 16),
+
+                // Message
+                Text(
+                  isFavorite ? 'Ajouté aux favoris !' : 'Retiré des favoris',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isFavorite ? Colors.red : Colors.orange,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  isFavorite
+                      ? 'Le salon a été ajouté à vos favoris'
+                      : 'Le salon a été retiré de vos favoris',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Bouton OK
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isFavorite ? Colors.red : Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error, color: Colors.red, size: 50),
+                SizedBox(height: 16),
+                Text(
+                  'Erreur',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Impossible de mettre à jour les favoris',
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+
+  // Future<void> _toggleFavori() async {
+  //   setState(() {
+  //     _isLoadingFavorite = true;
+  //   });
+  //
+  //   try {
+  //     final newState = await FavoritesService.toggleFavorite(
+  //       widget.currentUser.idTblUser,
+  //       widget.salon.idTblSalon,
+  //     );
+  //
+  //     setState(() {
+  //       _isFavorite = newState;
+  //     });
+  //
+  //     // Afficher un message de confirmation
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text(
+  //             _isFavorite
+  //                 ? '💖 Salon ajouté aux favoris'
+  //                 : '💔 Salon retiré des favoris'
+  //         ),
+  //         backgroundColor: _isFavorite ? Colors.green : Colors.orange,
+  //         duration: Duration(seconds: 2),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     print('Erreur toggle favori: $e');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Erreur lors de la mise à jour des favoris'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   } finally {
+  //     setState(() {
+  //       _isLoadingFavorite = false;
+  //     });
+  //   }
+  // }
 
   /// ✅ NOUVEAU : Afficher les horaires du salon
   void _afficherHoraires() {
@@ -313,18 +503,135 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
         color: widget.primaryColor.withAlpha((255 * 0.1).round()),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: widget.salon.hasLogo
-          ? ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.network(
-          widget.salon.getLogoUrl("https://www.hairbnb.site") ?? "",
-          fit: BoxFit.cover,
-          errorBuilder: (ctx, obj, st) => _buildDefaultSalonIcon(),
-        ),
-      )
-          : _buildDefaultSalonIcon(),
+      child: Stack( // 👈 NOUVEAU : Stack pour superposer le bouton
+        children: [
+          // Image du salon (existant)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: widget.salon.hasLogo
+                ? Image.network(
+              widget.salon.getLogoUrl("https://www.hairbnb.site") ?? "",
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (ctx, obj, st) => _buildDefaultSalonIcon(),
+            )
+                : _buildDefaultSalonIcon(),
+          ),
+
+          // Bouton cœur en haut à droite
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: _isLoadingFavorite
+                  ? Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(widget.primaryColor),
+                  ),
+                ),
+              )
+                  : FutureBuilder<bool>(
+                future: FavoritesService.isSalonFavorite(
+                  widget.currentUser.idTblUser,
+                  widget.salon.idTblSalon,
+                ),
+                builder: (context, snapshot) {
+                  // Si on a déjà une réponse locale, l'utiliser
+                  bool isCurrentlyFavorite = snapshot.hasData ? snapshot.data! : _isFavorite;
+
+                  return IconButton(
+                    onPressed: _toggleFavori,
+                    icon: Icon(
+                      isCurrentlyFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isCurrentlyFavorite ? Colors.red : Colors.grey[600],
+                      size: 24,
+                    ),
+                    padding: EdgeInsets.all(8),
+                  );
+                },
+              ),
+            ),
+          ),
+          // Positioned(
+          //   top: 12,
+          //   right: 12,
+          //   child: Container(
+          //     decoration: BoxDecoration(
+          //       color: Colors.white,
+          //       shape: BoxShape.circle,
+          //       boxShadow: [
+          //         BoxShadow(
+          //           color: Colors.black.withOpacity(0.2),
+          //           blurRadius: 6,
+          //           offset: Offset(0, 2),
+          //         ),
+          //       ],
+          //     ),
+          //     child: _isLoadingFavorite
+          //         ? Padding(
+          //       padding: EdgeInsets.all(12),
+          //       child: SizedBox(
+          //         width: 20,
+          //         height: 20,
+          //         child: CircularProgressIndicator(
+          //           strokeWidth: 2,
+          //           valueColor: AlwaysStoppedAnimation<Color>(widget.primaryColor),
+          //         ),
+          //       ),
+          //     )
+          //         : IconButton(
+          //       onPressed: _toggleFavori,
+          //       icon: Icon(
+          //         _isFavorite ? Icons.favorite : Icons.favorite_border,
+          //         color: _isFavorite ? Colors.red : Colors.grey[600],
+          //         size: 24,
+          //       ),
+          //       padding: EdgeInsets.all(8),
+          //     ),
+          //   ),
+          // ),
+        ],
+      ),
     );
   }
+
+  // Widget _buildSalonHeader() {
+  //   return Container(
+  //     height: 200,
+  //     width: double.infinity,
+  //     decoration: BoxDecoration(
+  //       color: widget.primaryColor.withAlpha((255 * 0.1).round()),
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: widget.salon.hasLogo
+  //         ? ClipRRect(
+  //       borderRadius: BorderRadius.circular(16),
+  //       child: Image.network(
+  //         widget.salon.getLogoUrl("https://www.hairbnb.site") ?? "",
+  //         fit: BoxFit.cover,
+  //         errorBuilder: (ctx, obj, st) => _buildDefaultSalonIcon(),
+  //       ),
+  //     )
+  //         : _buildDefaultSalonIcon(),
+  //   );
+  // }
 
   Widget _buildDefaultSalonIcon() {
     return Center(
@@ -752,7 +1059,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
     return StatefulBuilder(
       builder: (context, setState) {
         bool isExpanded = false;
-        final shortText = text.length > 150 ? text.substring(0, 150) + "..." : text;
+        final shortText = text.length > 150 ? "${text.substring(0, 150)}..." : text;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,14 +1075,14 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
             if (text.length > 150)
               TextButton(
                 onPressed: () => setState(() => isExpanded = !isExpanded),
-                child: Text(
-                  isExpanded ? "Voir moins" : "Voir plus",
-                  style: TextStyle(color: widget.primaryColor),
-                ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  isExpanded ? "Voir moins" : "Voir plus",
+                  style: TextStyle(color: widget.primaryColor),
                 ),
               ),
           ],
@@ -827,7 +1134,7 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
           ],
         ),
         SizedBox(height: 16),
-        Container(
+        SizedBox(
           height: 120,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -1618,7 +1925,9 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
                 );
 
                 // ✅ Plus besoin de logique d'ajout au panier ici - le modal gère tout !
-                print("✅ Modal services fermé pour ${widget.salon.nom}");
+                if (kDebugMode) {
+                  print("✅ Modal services fermé pour ${widget.salon.nom}");
+                }
               },
               icon: Icon(Icons.date_range),
               label: Text("Services"),
@@ -1632,6 +1941,30 @@ class _SalonDetailsModalState extends State<SalonDetailsModal> {
         ],
       ),
     );
+  }
+
+  Future<void> _verifierFavori() async {
+    setState(() {
+      _isLoadingFavorite = true;
+    });
+
+    try {
+      final isFavorite = await FavoritesService.isSalonFavorite(
+          widget.currentUser.idTblUser,
+          widget.salon.idTblSalon
+      );
+      setState(() {
+        _isFavorite = isFavorite;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur vérification favori: $e');
+      }
+    } finally {
+      setState(() {
+        _isLoadingFavorite = false;
+      });
+    }
   }
 
 }

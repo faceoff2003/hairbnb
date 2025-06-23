@@ -2,15 +2,39 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/favorites.dart';
-import '../../services/api_services/api_service.dart';
 
 class FavoritesApi {
+  static const String baseURL = 'https://www.hairbnb.site/api';
+
+  // Méthode pour obtenir les headers avec authentification Firebase
+  static Future<Map<String, String>> _getHeaders() async {
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        final token = await firebaseUser.getIdToken();
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        };
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erreur récupération token: $e');
+      }
+    }
+
+    return {
+      'Content-Type': 'application/json',
+    };
+  }
+
   // Récupère les favoris d'un utilisateur
   static Future<List<FavoriteModel>> getUserFavorites(int userId) async {
     final response = await http.get(
-      Uri.parse('${APIService.baseURL}/get_user_favorites/?user=$userId'),
-      headers: await APIService.headers, // 🎯 Token Firebase inclus automatiquement
+      Uri.parse('$baseURL/get_user_favorites/?user=$userId'),
+      headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
@@ -30,8 +54,8 @@ class FavoritesApi {
   // Ajoute un salon aux favoris
   static Future<FavoriteModel> addToFavorites(int userId, int salonId) async {
     final response = await http.post(
-      Uri.parse('${APIService.baseURL}/favorites/add/'),
-      headers: await APIService.headers, // 🎯 Auth Firebase automatique
+      Uri.parse('$baseURL/favorites/add/'),
+      headers: await _getHeaders(),
       body: jsonEncode({
         'user': userId,
         'salon': salonId,
@@ -49,8 +73,8 @@ class FavoritesApi {
   static Future<FavoriteModel?> checkFavorite(int userId, int salonId) async {
     try {
       final response = await http.get(
-        Uri.parse('${APIService.baseURL}/check_favorite/?user=$userId&salon=$salonId'),
-        headers: await APIService.headers, // 🎯 Headers automatiques avec auth
+        Uri.parse('$baseURL/check_favorite/?user=$userId&salon=$salonId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -72,29 +96,11 @@ class FavoritesApi {
     }
   }
 
-  // // Ajoute un salon aux favoris
-  // static Future<FavoriteModel> addToFavorites(int userId, int salonId) async {
-  //   final response = await http.post(
-  //     Uri.parse('${APIService.baseURL}/favorites/add/'),
-  //     headers: await APIService.headers, // 🎯 Token d'auth inclus automatiquement
-  //     body: jsonEncode({
-  //       'user': userId,
-  //       'salon': salonId,
-  //     }),
-  //   );
-  //
-  //   if (response.statusCode == 201 || response.statusCode == 200) {
-  //     return FavoriteModel.fromJson(jsonDecode(response.body));
-  //   } else {
-  //     throw Exception('Échec de l\'ajout aux favoris: ${response.body}');
-  //   }
-  // }
-
   // Supprime un favori par son ID
   static Future<bool> removeFavorite(int favoriteId) async {
     final response = await http.delete(
-      Uri.parse('${APIService.baseURL}/favorites/remove/'),
-      headers: await APIService.headers, // 🎯 Auth + version app automatique
+      Uri.parse('$baseURL/favorites/remove/'),
+      headers: await _getHeaders(),
       body: jsonEncode({
         'id': favoriteId,
       }),
@@ -103,11 +109,13 @@ class FavoritesApi {
     if (response.statusCode == 204) {
       return true;
     } else {
+      if (kDebugMode) {
+        print('Erreur suppression favori: ${response.statusCode} - ${response.body}');
+      }
       throw Exception('Échec de la suppression du favori: ${response.statusCode} - ${response.body}');
     }
   }
 }
-
 
 
 
@@ -119,15 +127,14 @@ class FavoritesApi {
 // import 'package:http/http.dart' as http;
 // import 'package:flutter/foundation.dart';
 // import '../../models/favorites.dart';
+// import '../../services/api_services/api_service.dart';
 //
 // class FavoritesApi {
-//   static const String baseUrl = 'https://www.hairbnb.site/api';
-//
 //   // Récupère les favoris d'un utilisateur
 //   static Future<List<FavoriteModel>> getUserFavorites(int userId) async {
 //     final response = await http.get(
-//       Uri.parse('$baseUrl/get_user_favorites/?user=$userId'),
-//       headers: {'Content-Type': 'application/json'},
+//       Uri.parse('${APIService.baseURL}/get_user_favorites/?user=$userId'),
+//       headers: await APIService.headers, // 🎯 Token Firebase inclus automatiquement
 //     );
 //
 //     if (response.statusCode == 200) {
@@ -144,12 +151,30 @@ class FavoritesApi {
 //     }
 //   }
 //
+//   // Ajoute un salon aux favoris
+//   static Future<FavoriteModel> addToFavorites(int userId, int salonId) async {
+//     final response = await http.post(
+//       Uri.parse('${APIService.baseURL}/favorites/add/'),
+//       headers: await APIService.headers, // 🎯 Auth Firebase automatique
+//       body: jsonEncode({
+//         'user': userId,
+//         'salon': salonId,
+//       }),
+//     );
+//
+//     if (response.statusCode == 201 || response.statusCode == 200) {
+//       return FavoriteModel.fromJson(jsonDecode(response.body));
+//     } else {
+//       throw Exception('Échec de l\'ajout aux favoris: ${response.body}');
+//     }
+//   }
+//
 //   // Vérifie si un salon est en favori pour un utilisateur
 //   static Future<FavoriteModel?> checkFavorite(int userId, int salonId) async {
 //     try {
 //       final response = await http.get(
-//         Uri.parse('$baseUrl/check_favorite/?user=$userId&salon=$salonId'),
-//         headers: {'Content-Type': 'application/json'},
+//         Uri.parse('${APIService.baseURL}/check_favorite/?user=$userId&salon=$salonId'),
+//         headers: await APIService.headers, // 🎯 Headers automatiques avec auth
 //       );
 //
 //       if (response.statusCode == 200) {
@@ -171,29 +196,11 @@ class FavoritesApi {
 //     }
 //   }
 //
-//   // Ajoute un salon aux favoris
-//   static Future<FavoriteModel> addToFavorites(int userId, int salonId) async {
-//     final response = await http.post(
-//       Uri.parse('$baseUrl/favorites/add/'),
-//       headers: {'Content-Type': 'application/json'},
-//       body: jsonEncode({
-//         'user': userId,
-//         'salon': salonId,
-//       }),
-//     );
-//
-//     if (response.statusCode == 201 || response.statusCode == 200) {
-//       return FavoriteModel.fromJson(jsonDecode(response.body));
-//     } else {
-//       throw Exception('Échec de l\'ajout aux favoris: ${response.body}');
-//     }
-//   }
-//
 //   // Supprime un favori par son ID
 //   static Future<bool> removeFavorite(int favoriteId) async {
 //     final response = await http.delete(
-//       Uri.parse('$baseUrl/favorites/remove/'),
-//       headers: {'Content-Type': 'application/json'},
+//       Uri.parse('${APIService.baseURL}/favorites/remove/'),
+//       headers: await APIService.headers,
 //       body: jsonEncode({
 //         'id': favoriteId,
 //       }),

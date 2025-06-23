@@ -10,15 +10,15 @@
   });
 
   factory Categorie.fromJson(Map<String, dynamic> json) {
-    print("🔍 DEBUG CATEGORIE: JSON brut reçu: $json");
-    print("🔍 DEBUG CATEGORIE: Type de json: ${json.runtimeType}");
-    print("🔍 DEBUG CATEGORIE: Clés disponibles: ${json.keys.toList()}");
+    // print("🔍 DEBUG CATEGORIE: JSON brut reçu: $json");
+    // print("🔍 DEBUG CATEGORIE: Type de json: ${json.runtimeType}");
+    // print("🔍 DEBUG CATEGORIE: Clés disponibles: ${json.keys.toList()}");
 
     // ✅ Récupération de l'ID avec debug détaillé
     int categorieId = 0;
     try {
       final idValue = json['idTblCategorie'];
-      print("🔍 DEBUG CATEGORIE: Valeur idTblCategorie: $idValue (type: ${idValue.runtimeType})");
+      //print("🔍 DEBUG CATEGORIE: Valeur idTblCategorie: $idValue (type: ${idValue.runtimeType})");
 
       if (idValue != null) {
         if (idValue is int) {
@@ -28,7 +28,7 @@
         } else {
           categorieId = int.parse(idValue.toString());
         }
-        print("✅ ID converti avec succès: $categorieId");
+        //print("✅ ID converti avec succès: $categorieId");
       } else {
         print("❌ idTblCategorie est null !");
       }
@@ -41,14 +41,14 @@
     String nom = '';
     try {
       final nomValue = json['intitule_categorie'];
-      print("🔍 DEBUG CATEGORIE: Valeur intitule_categorie: $nomValue (type: ${nomValue.runtimeType})");
+      //print("🔍 DEBUG CATEGORIE: Valeur intitule_categorie: $nomValue (type: ${nomValue.runtimeType})");
 
       if (nomValue != null) {
         nom = nomValue.toString();
-        print("✅ Nom converti avec succès: '$nom'");
+        //print("✅ Nom converti avec succès: '$nom'");
       } else {
         nom = 'Catégorie sans nom';
-        print("⚠️ intitule_categorie est null, utilisation du nom par défaut");
+        //print("⚠️ intitule_categorie est null, utilisation du nom par défaut");
       }
     } catch (e) {
       print("❌ ERREUR conversion nom catégorie: $e");
@@ -57,7 +57,7 @@
 
     final description = json['description']?.toString() ?? '';
 
-    print("🎯 CATEGORIE CONSTRUITE: ID=$categorieId, Nom='$nom', Description='$description'");
+    //print("🎯 CATEGORIE CONSTRUITE: ID=$categorieId, Nom='$nom', Description='$description'");
 
     final categorie = Categorie(
       id: categorieId,
@@ -65,7 +65,7 @@
       description: description,
     );
 
-    print("🎯 VERIFICATION FINALE: categorie.id=${categorie.id}, categorie.nom='${categorie.nom}'");
+    //print("🎯 VERIFICATION FINALE: categorie.id=${categorie.id}, categorie.nom='${categorie.nom}'");
 
     return categorie;
   }

@@ -28,13 +28,15 @@ class _CustomAppBarState extends State<CustomAppBar> {
 
     return AppBar(
       backgroundColor: Colors.orange,
-      // Ajouter un bouton de menu pour ouvrir le drawer
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.black),
+      // Afficher la flèche seulement si on peut revenir en arrière
+      leading: Navigator.canPop(context)
+          ? IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () {
-          Scaffold.of(context).openDrawer();
+          Navigator.pop(context);
         },
-      ),
+      )
+          : null,
       title: Row(
         children: [
           if (currentUser?.photoProfil != null)

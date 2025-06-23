@@ -649,7 +649,7 @@ class _ServicesListPageContentState extends State<_ServicesListPageContent> with
                   children: [
                     Row(
                       children: [
-                        Expanded(child: SearchField(controller: _searchController)),
+                        SearchField(controller: _searchController),
                         const SizedBox(width: 12),
                         IconButton(
                           onPressed: () => setState(() => isGridView = !isGridView),
@@ -658,6 +658,18 @@ class _ServicesListPageContentState extends State<_ServicesListPageContent> with
                             color: primaryViolet,
                           ),
                         ),
+
+                    // Row(
+                    //   children: [
+                    //     Expanded(child: SearchField(controller: _searchController)),
+                    //     const SizedBox(width: 12),
+                    //     IconButton(
+                    //       onPressed: () => setState(() => isGridView = !isGridView),
+                    //       icon: Icon(
+                    //         isGridView ? Icons.list : Icons.grid_view,
+                    //         color: primaryViolet,
+                    //       ),
+                    //     ),
                         PageSizeSelector(
                           currentSize: pageSize,
                           onChanged: (newSize) {

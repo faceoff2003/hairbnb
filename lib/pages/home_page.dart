@@ -50,7 +50,8 @@ class _HomePageState extends State<HomePage> {
     return HairbnbScaffold(
       body: Column(
         children: [
-          // 🎯 BADGE EN HAUT (s'affiche seulement s'il y a des avis)
+          // BADGE EN HAUT (s'affiche seulement s'il y a des avis)
+          if (currentUser?.type == 'Client')
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -115,7 +116,7 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 20),
 
-                  // Bouton normal pour tester
+                  if (currentUser?.type == 'Client')
                   ElevatedButton.icon(
                     onPressed: _navigateToAvisEnAttente,
                     icon: Icon(Icons.rate_review),

@@ -1,5 +1,6 @@
 ﻿// lib/pages/ai_chat/services/coiffeuse_ai_chat_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/ai_chat_coiffeuse.dart';
 
@@ -41,22 +42,30 @@ class CoiffeuseAIChatService {
         throw Exception('Erreur lors de la récupération des conversations: ${response.body}');
       }
     } catch (e) {
-      print("Erreur dans getConversations: $e");
+      if (kDebugMode) {
+        print("Erreur dans getConversations: $e");
+      }
       throw Exception('Erreur lors de la récupération des conversations: $e');
     }
   }
 
   /// Récupérer les messages d'une conversation spécifique
   Future<CoiffeuseConversationDetail> getConversationMessages(int? conversationId) async {
-    print("getConversationMessages appelé avec id: $conversationId");
+    if (kDebugMode) {
+      print("getConversationMessages appelé avec id: $conversationId");
+    }
 
     if (conversationId == null) {
-      print("ERREUR: conversationId est null dans getConversationMessages");
+      if (kDebugMode) {
+        print("ERREUR: conversationId est null dans getConversationMessages");
+      }
       throw Exception('L\'ID de conversation ne peut pas être null');
     }
 
     try {
-      print("Tentative de récupération des messages pour conversation $conversationId");
+      if (kDebugMode) {
+        print("Tentative de récupération des messages pour conversation $conversationId");
+      }
       final response = await http.get(
         Uri.parse('$baseUrl/coiffeuse/ai/conversations/$conversationId/messages/'),
         headers: _headers,
@@ -68,11 +77,15 @@ class CoiffeuseAIChatService {
 
         return CoiffeuseConversationDetail.fromJson(jsonData);
       } else {
-        print("Erreur HTTP ${response.statusCode}: ${response.body}");
+        if (kDebugMode) {
+          print("Erreur HTTP ${response.statusCode}: ${response.body}");
+        }
         throw Exception('Erreur lors de la récupération des messages: ${response.body}');
       }
     } catch (e) {
-      print("Exception dans getConversationMessages: $e");
+      if (kDebugMode) {
+        print("Exception dans getConversationMessages: $e");
+      }
       throw Exception('Erreur lors de la récupération des messages: $e');
     }
   }
@@ -91,11 +104,15 @@ class CoiffeuseAIChatService {
 
         return CoiffeuseConversationCreate.fromJson(jsonData);
       } else {
-        print("Erreur HTTP ${response.statusCode} lors de la création de conversation: ${response.body}");
+        if (kDebugMode) {
+          print("Erreur HTTP ${response.statusCode} lors de la création de conversation: ${response.body}");
+        }
         throw Exception('Erreur lors de la création de la conversation: ${response.body}');
       }
     } catch (e) {
-      print("Exception dans createConversation: $e");
+      if (kDebugMode) {
+        print("Exception dans createConversation: $e");
+      }
       throw Exception('Erreur lors de la création de la conversation: $e');
     }
   }
@@ -126,7 +143,9 @@ class CoiffeuseAIChatService {
         throw Exception('Erreur lors de l\'envoi du message: ${response.body}');
       }
     } catch (e) {
-      print("Erreur dans sendMessage: $e");
+      if (kDebugMode) {
+        print("Erreur dans sendMessage: $e");
+      }
       throw Exception('Erreur lors de l\'envoi du message: $e');
     }
   }
@@ -143,7 +162,9 @@ class CoiffeuseAIChatService {
         throw Exception('Erreur lors de la suppression de la conversation: ${response.body}');
       }
     } catch (e) {
-      print("Erreur dans deleteConversation: $e");
+      if (kDebugMode) {
+        print("Erreur dans deleteConversation: $e");
+      }
       throw Exception('Erreur lors de la suppression de la conversation: $e');
     }
   }

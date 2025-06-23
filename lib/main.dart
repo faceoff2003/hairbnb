@@ -10,6 +10,7 @@ import 'package:hairbnb/services/notifications_services/notification_service.dar
 import 'package:hairbnb/services/providers/cart_provider.dart';
 import 'package:hairbnb/services/providers/coiffeuse_ai_chat_provider.dart';
 import 'package:hairbnb/services/providers/disponibilites_provider.dart';
+import 'package:hairbnb/services/providers/revenus_provider.dart';
 import 'package:hairbnb/services/routes_services/route_service.dart';
 import 'firebase_options.dart';
 import 'package:hairbnb/pages/splash_screen.dart';
@@ -49,9 +50,16 @@ void main() async {
   );
 
   // Initialiser les notifications
-  await NotificationService.initialize();
+  //await NotificationService.initialize();
 
-  print("✅ Application initialisée avec succès");
+  // ✅ DÉMARRER les notifications en arrière-plan (non-bloquant)
+  NotificationService.initialize().catchError((e) {
+    print("⚠️ Erreur notifications (non-bloquant): $e");
+  });
+
+  if (kDebugMode) {
+    print("✅ Application initialisée avec succès");
+  }
   }
 
   // Initialiser le service de notifications
@@ -62,26 +70,56 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        // Seulement CurrentUserProvider au démarrage
         ChangeNotifierProvider(create: (_) => CurrentUserProvider()),
-        ChangeNotifierProvider(create: (context) => CartProvider()),//
-        ChangeNotifierProvider(create: (_) => DisponibilitesProvider()),
-        ChangeNotifierProvider(create: (context) => AIChatProvider(AIChatService(
+
+        // ✅ LAZY : Chargement à la demande
+        ChangeNotifierProvider(create: (_) => CartProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => DisponibilitesProvider(), lazy: true),
+        ChangeNotifierProvider(create: (_) => RevenusProvider(), lazy: true),
+
+        // ✅ TRÈS LAZY : AI Providers seulement quand on va sur la page AI
+        ChangeNotifierProvider(
+          create: (context) => AIChatProvider(AIChatService(
+            baseUrl: 'https://www.hairbnb.site/api',
+            token: '',
+          )),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (context) => CoiffeuseAIChatProvider(
+            CoiffeuseAIChatService(
               baseUrl: 'https://www.hairbnb.site/api',
               token: '',
             ),
           ),
-        ),
-        ChangeNotifierProvider(create: (context) => CoiffeuseAIChatProvider(
-          CoiffeuseAIChatService(
-            baseUrl: 'https://www.hairbnb.site/api',
-            token: '',
-          ),
-        ),
+          lazy: true,
         ),
       ],
-      //child: const AppRoot(),
       child: const MyApp(),
     ),
+    // MultiProvider(
+    //   providers: [
+    //     ChangeNotifierProvider(create: (_) => CurrentUserProvider()),
+    //     ChangeNotifierProvider(create: (context) => CartProvider()),//
+    //     ChangeNotifierProvider(create: (_) => DisponibilitesProvider()),
+    //     ChangeNotifierProvider(create: (context) => AIChatProvider(AIChatService(
+    //           baseUrl: 'https://www.hairbnb.site/api',
+    //           token: '',
+    //         ),
+    //       ),
+    //     ),
+    //     ChangeNotifierProvider(create: (context) => CoiffeuseAIChatProvider(
+    //       CoiffeuseAIChatService(
+    //         baseUrl: 'https://www.hairbnb.site/api',
+    //         token: '',
+    //       ),
+    //     ),
+    //     ),
+    //   ],
+    //   //child: const AppRoot(),
+    //   child: const MyApp(),
+    // ),
   );
 }
 

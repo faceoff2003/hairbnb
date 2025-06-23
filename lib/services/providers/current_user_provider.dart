@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:hairbnb/models/current_user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -16,7 +15,11 @@ class CurrentUserProvider with ChangeNotifier {
 
   /// 🔄 Récupérer l'utilisateur depuis Django via token sécurisé
   Future<void> fetchCurrentUser() async {
-    if (_currentUser != null) return;
+    // ✅ CACHE : Si déjà chargé, ne pas recharger
+    if (_currentUser != null) {
+      if (kDebugMode) print("✅ User déjà en cache");
+      return;
+    }
 
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return;
@@ -24,33 +27,74 @@ class CurrentUserProvider with ChangeNotifier {
     try {
       final token = await firebaseUser.getIdToken();
 
+      // ✅ TIMEOUT : Limite à 10 secondes
       final response = await http.get(
         Uri.parse('$baseUrl/api/get_current_user/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(Duration(seconds: 10)); // ← AJOUT TIMEOUT
 
       if (response.statusCode == 200) {
         final decodedBody = utf8.decode(response.bodyBytes);
         final data = json.decode(decodedBody);
         _currentUser = CurrentUser.fromJson(data['user']);
 
-        // Sauvegarder le token FCM après connexion réussie
-        //await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+        // ✅ NOTIFICATION TOKEN : En arrière-plan (non-bloquant)
         if (!kIsWeb) {
-          await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+          FCMTokenService.saveTokenToFirebase(firebaseUser.uid).catchError((e) {
+            if (kDebugMode) print("⚠️ FCM Token error (non-bloquant): $e");
+          });
         }
 
         notifyListeners();
+        if (kDebugMode) print("✅ User chargé avec succès");
       } else {
-        print("⚠️ Utilisateur non trouvé ou non autorisé (${response.statusCode})");
+        if (kDebugMode) print("⚠️ User non trouvé (${response.statusCode})");
       }
     } catch (error) {
-      print("❌ Erreur lors du chargement du current user : $error");
+      if (kDebugMode) print("❌ Erreur chargement user : $error");
+      // ✅ NE PAS CRASH : Continuer même en cas d'erreur réseau
     }
   }
+
+  // Future<void> fetchCurrentUser() async {
+  //   if (_currentUser != null) return;
+  //
+  //   final firebaseUser = _auth.currentUser;
+  //   if (firebaseUser == null) return;
+  //
+  //   try {
+  //     final token = await firebaseUser.getIdToken();
+  //
+  //     final response = await http.get(
+  //       Uri.parse('$baseUrl/api/get_current_user/'),
+  //       headers: {
+  //         'Authorization': 'Bearer $token',
+  //         'Content-Type': 'application/json',
+  //       },
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final decodedBody = utf8.decode(response.bodyBytes);
+  //       final data = json.decode(decodedBody);
+  //       _currentUser = CurrentUser.fromJson(data['user']);
+  //
+  //       // Sauvegarder le token FCM après connexion réussie
+  //       //await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+  //       if (!kIsWeb) {
+  //         await FCMTokenService.saveTokenToFirebase(firebaseUser.uid);
+  //       }
+  //
+  //       notifyListeners();
+  //     } else {
+  //       print("⚠️ Utilisateur non trouvé ou non autorisé (${response.statusCode})");
+  //     }
+  //   } catch (error) {
+  //     print("❌ Erreur lors du chargement du current user : $error");
+  //   }
+  // }
 
   /// 🔄 Réinitialiser l'utilisateur après déconnexion
   void clearUser() {
@@ -88,12 +132,18 @@ class CurrentUserProvider with ChangeNotifier {
         }
 
         notifyListeners();
-        print("✅ Utilisateur rechargé avec succès");
+        if (kDebugMode) {
+          print("✅ Utilisateur rechargé avec succès");
+        }
       } else {
-        print("⚠️ Erreur rechargement utilisateur (${response.statusCode})");
+        if (kDebugMode) {
+          print("⚠️ Erreur rechargement utilisateur (${response.statusCode})");
+        }
       }
     } catch (error) {
-      print("❌ Erreur lors du rechargement : $error");
+      if (kDebugMode) {
+        print("❌ Erreur lors du rechargement : $error");
+      }
     }
   }
 }

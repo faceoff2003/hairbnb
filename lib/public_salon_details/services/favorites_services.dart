@@ -18,15 +18,15 @@ class FavoritesService {
         return favorite;
       }
 
-      // Sinon, rechercher dans la liste complète
-      final favorites = await FavoritesApi.getUserFavorites(userId);
-      for (var fav in favorites) {
-        // Utiliser getSalonId pour gérer les différentes représentations possibles du salon
-        if (fav.getSalonId() == salonId) {
-          return fav;
-        }
-      }
-      return null; // Salon pas trouvé dans les favoris
+      // // Sinon, rechercher dans la liste complète
+      // final favorites = await FavoritesApi.getUserFavorites(userId);
+      // for (var fav in favorites) {
+      //   // Utiliser getSalonId pour gérer les différentes représentations possibles du salon
+      //   if (fav.getSalonId() == salonId) {
+      //     return fav;
+      //   }
+      // }
+      // return null; // Salon pas trouvé dans les favoris
     } catch (e) {
       if (kDebugMode) {
         print('Erreur lors de la vérification des favoris: $e');

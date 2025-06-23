@@ -40,7 +40,7 @@ class BottomNavBar extends StatelessWidget {
           context,
           MaterialPageRoute(builder: (context) => RendezVousPage(coiffeuseId: currentUser!.idTblUser)),
         );
-      } else if (currentUser?.type == "client") {
+      } else if (currentUser?.type == "Client") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => MesCommandesPage(currentUser: currentUser!)),
@@ -77,12 +77,6 @@ class BottomNavBar extends StatelessWidget {
         MaterialPageRoute(builder: (context) => const HomePage()),
             (Route<dynamic> route) => false,
       );
-      // Navigator.pushReplacement(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => HomePage(),
-      //   ),
-      // );
     } else {
       // Navigation normale
       onTap(index);

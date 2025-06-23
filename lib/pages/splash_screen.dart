@@ -38,7 +38,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(seconds: 2)); // Laisse l'animation jouer
+    // await Future.delayed(const Duration(seconds: 2));
+
+    // ✅ DÉMARRER immédiatement :
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
       if (!mounted) return;
       if (user == null) {
@@ -49,8 +51,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       } else {
         final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
         try {
+          // ✅ CHARGER en parallèle avec l'animation
           await currentUserProvider.fetchCurrentUser();
-
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const HomePage()),
@@ -65,6 +67,35 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       }
     });
   }
+
+  // Future<void> _navigateAfterDelay() async {
+  //   await Future.delayed(const Duration(seconds: 2)); // Laisse l'animation jouer
+  //   _authSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+  //     if (!mounted) return;
+  //     if (user == null) {
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => const LoginPage()),
+  //       );
+  //     } else {
+  //       final currentUserProvider = Provider.of<CurrentUserProvider>(context, listen: false);
+  //       try {
+  //         await currentUserProvider.fetchCurrentUser();
+  //
+  //         Navigator.pushReplacement(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => const HomePage()),
+  //         );
+  //       } catch (e) {
+  //         debugPrint("Erreur lors de fetchCurrentUser: $e");
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(content: Text("Erreur de chargement de l'utilisateur")),
+  //         );
+  //         FirebaseAuth.instance.signOut();
+  //       }
+  //     }
+  //   });
+  // }
 
   @override
   void dispose() {
