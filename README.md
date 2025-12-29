@@ -644,7 +644,7 @@ Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
 **William Soulaymane**
 
 [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/faceoff2003)
-[![Portfolio](https://img.shields.io/badge/Portfolio-FF5722?style=for-the-badge&logo=google-chrome&logoColor=white)]([https://votre-portfolio.com](https://soulayman.be/))
+[![Portfolio](https://img.shields.io/badge/Portfolio-FF5722?style=for-the-badge&logo=google-chrome&logoColor=white)](https://www.soulayman.be/)
 
 *Développeur Full Stack - Diplômé en Informatique de Gestion (EAFC Colfontaine, 2025)*
 
