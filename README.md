@@ -543,11 +543,10 @@ Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
 
 <div align="center">
 
-**William Soulaymane**
+**William Soulayman**
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/votre-profil/)
 [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/faceoff2003)
-[![Portfolio](https://img.shields.io/badge/Portfolio-FF5722?style=for-the-badge&logo=google-chrome&logoColor=white)](https://votre-portfolio.com)
+[![Portfolio](https://img.shields.io/badge/Portfolio-FF5722?style=for-the-badge&logo=google-chrome&logoColor=white)](https://soulayman.be)
 
 *Développeur Full Stack - Diplômé en Informatique de Gestion (EAFC Colfontaine, 2025)*
 
