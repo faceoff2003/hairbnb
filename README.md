@@ -17,7 +17,7 @@
 
 <br/>
 
-> 🎬 **Vidéo démo** : [Regarder sur YouTube](#) | 📱 **Télécharger l'APK** : [Releases](#)
+> 🎬 **Vidéo démo** : [Regarder sur YouTube(SOON)](#) | 📱 **Télécharger l'APK** : [Releases](https://github.com/faceoff2003/hairbnb/releases) | 🌐 **Web App** : [Version web](https://soulayman.be/Tfe_hairbnb/web/index.html)
 
 </div>
 
